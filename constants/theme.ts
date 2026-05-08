@@ -1,53 +1,58 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens for Nook.
+ *
+ * Import anywhere:
+ *   import { THEME } from '@/constants/theme';
+ *   <View style={{ backgroundColor: THEME.light.bg }} />
+ *
+ * Later we'll wrap this in a `useTheme()` hook that picks the active
+ * palette based on the user's theme setting (light/dark/system).
  */
 
-import { Platform } from 'react-native';
+export const ACCENTS = {
+  teal: { base: "#0F9D8C", deep: "#0B6F64", soft: "#D5F0EB", name: "Teal" },
+  indigo: { base: "#5457E8", deep: "#3A3CBF", soft: "#E4E4FB", name: "Indigo" },
+  coral: { base: "#E56A4F", deep: "#B4482E", soft: "#FCE4DC", name: "Coral" },
+  amber: { base: "#C78A1A", deep: "#8E6110", soft: "#F7E9C8", name: "Amber" },
+  plum: { base: "#8A3D7A", deep: "#5F2855", soft: "#F0DAEA", name: "Plum" },
+} as const;
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-export const Colors = {
+export const THEME = {
+  font: {
+    body: "Inter_400Regular",
+    heading: "Inter_700Bold",
+    mono: "Inconsolata_400Regular",
+  },
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    bg: "#F6F5F1",
+    surface: "#FFFFFF",
+    surfaceAlt: "#FAF9F5",
+    border: "#ECE8DF",
+    borderStrong: "#DBD5C7",
+    ink: "#15171A",
+    inkMuted: "#5B5E64",
+    inkSoft: "#8B8E94",
+    pill: "#F0EDE4",
+    pillInk: "#2A2C30",
+    positive: "#0E8A5F",
+    negative: "#C44141",
+    chipBg: "#F3F0E8",
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    bg: "#0E1210",
+    surface: "#161B19",
+    surfaceAlt: "#1B2220",
+    border: "#262D2A",
+    borderStrong: "#323A37",
+    ink: "#F1EFEA",
+    inkMuted: "#9BA1A0",
+    inkSoft: "#6B7170",
+    pill: "#222927",
+    pillInk: "#E6E4DE",
+    positive: "#45C596",
+    negative: "#E06767",
+    chipBg: "#1E2522",
   },
-};
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+} as const;
+export type ThemeScheme = keyof typeof THEME;
+export type ThemeToken = keyof typeof THEME.light;
