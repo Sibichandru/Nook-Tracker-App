@@ -1,5 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  type SharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 import { PIcon } from '@/components/ui/PIcon';
 import { useAuth } from '@/lib/auth-context';
@@ -21,19 +27,26 @@ function initialsFromName(name: string | null | undefined): string {
 }
 
 type DashTopBarProps = {
-  /** True once the user has scrolled past the top — drives the hairline border */
-  showBorder?: boolean;
+  /** Shared scroll offset from the dashboard's ScrollView; drives the hairline border */
+  scrollY?: SharedValue<number>;
 };
 
-export function DashTopBar({ showBorder = false }: DashTopBarProps) {
+export function DashTopBar({ scrollY }: DashTopBarProps) {
   const { palette } = useTheme();
   const { user } = useAuth();
   const styles = makeStyles(palette);
   const initials = initialsFromName(user?.displayName);
   const displayName = user?.displayName?.split(' ')[0] ?? 'Guest';
 
+  // LOOP: verify on device — animated border opacity (0..1 over 0..20px scroll)
+  const borderStyle = useAnimatedStyle(() => {
+    const y = scrollY?.value ?? 0;
+    return {
+      opacity: interpolate(y, [0, 20], [0, 1], Extrapolation.CLAMP),
+    };
+  });
+
   const handleSearch = () => {
-    // Wired in iter 24 (Search screen).
     if (__DEV__) console.warn('Search screen not implemented yet');
   };
 
@@ -42,7 +55,7 @@ export function DashTopBar({ showBorder = false }: DashTopBarProps) {
   };
 
   return (
-    <View style={[styles.bar, showBorder && styles.bordered]}>
+    <View style={styles.bar}>
       <View style={styles.left}>
         <LinearGradient
           colors={['#f3c28a', '#c17a5a']}
@@ -95,6 +108,15 @@ export function DashTopBar({ showBorder = false }: DashTopBarProps) {
           </View>
         </Pressable>
       </View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.borderLine,
+          { backgroundColor: palette.border },
+          borderStyle,
+        ]}
+      />
     </View>
   );
 }
@@ -108,11 +130,6 @@ function makeStyles(palette: Palette) {
       paddingHorizontal: 18,
       paddingTop: 12,
       paddingBottom: 10,
-      borderBottomWidth: 0,
-      borderBottomColor: palette.border,
-    },
-    bordered: {
-      borderBottomWidth: 1,
     },
     left: {
       flexDirection: 'row',
@@ -160,6 +177,13 @@ function makeStyles(palette: Palette) {
       width: 7,
       height: 7,
       borderRadius: 999,
+    },
+    borderLine: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: StyleSheet.hairlineWidth,
     },
   });
 }

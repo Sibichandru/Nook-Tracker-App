@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DashTopBar } from '@/components/dashboard/DashTopBar';
@@ -17,6 +24,9 @@ import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
 import type { Expense } from '@/lib/types';
 
+// LOOP: verify on device — scroll-driven hero collapse range
+const HERO_FADE_DISTANCE = 360;
+
 export default function DashboardScreen() {
   const { palette } = useTheme();
   const styles = makeStyles(palette);
@@ -28,7 +38,6 @@ export default function DashboardScreen() {
   const now = new Date();
   const { start, end } = useMemo(
     () => rangeFor(activePeriod, now),
-    // `now` recomputes on every render; the values stabilize per period change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activePeriod, now.toDateString()],
   );
@@ -76,8 +85,31 @@ export default function DashboardScreen() {
 
   const label = currentPeriodLabel(activePeriod, now);
 
+  // Shared scroll offset drives the hero fade/translate and topbar border.
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const heroAnimStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, HERO_FADE_DISTANCE * 0.8],
+      [1, 0],
+      Extrapolation.CLAMP,
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [0, HERO_FADE_DISTANCE],
+      [0, -80],
+      Extrapolation.CLAMP,
+    );
+    return { opacity, transform: [{ translateY }] };
+  });
+
   const handleAddExpense = () => {
-    // Real bottom sheet wires up in iter 18.
     Alert.alert('Add transaction', 'Sheet coming in iter 18');
   };
 
@@ -87,25 +119,29 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <DashTopBar />
-      <ScrollView
+      <DashTopBar scrollY={scrollY} />
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
         <PeriodBar />
-        <HeroCard
-          label={label}
-          total={total}
-          trendPct={trendPct}
-          expenses={expensesInPeriod}
-        />
+        <Animated.View style={heroAnimStyle}>
+          <HeroCard
+            label={label}
+            total={total}
+            trendPct={trendPct}
+            expenses={expensesInPeriod}
+          />
+        </Animated.View>
         <FilterChips />
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}
         />
         <View style={styles.tailSpacer} />
-      </ScrollView>
+      </Animated.ScrollView>
       <View style={styles.fabPin}>
         <FAB onPress={handleAddExpense} accessibilityLabel="Add transaction" />
       </View>
