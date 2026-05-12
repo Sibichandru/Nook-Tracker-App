@@ -29,7 +29,6 @@ import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
 import type { Expense } from '@/lib/types';
 
-// LOOP: verify on device — scroll-driven hero collapse range
 const HERO_FADE_DISTANCE = 360;
 
 export default function DashboardScreen() {

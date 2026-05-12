@@ -6,6 +6,7 @@ import {
   BottomSheetTextInput,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 import {
   forwardRef,
   useCallback,
@@ -86,6 +87,9 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
       });
       // Materialize the first occurrence immediately
       await runRecurringEngine();
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
       sheetRef.current?.dismiss();
     };
 

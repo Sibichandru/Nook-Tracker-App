@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { type Palette, useTheme } from '@/lib/theme';
@@ -30,7 +31,10 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             accessibilityLabel={o.label}
-            onPress={() => onChange(o.value)}
+            onPress={() => {
+              if (!active) Haptics.selectionAsync().catch(() => {});
+              onChange(o.value);
+            }}
             style={({ pressed }) => [
               styles.button,
               active && styles.buttonActive,

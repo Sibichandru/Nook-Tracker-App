@@ -6,6 +6,7 @@ import {
   BottomSheetTextInput,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 import {
   forwardRef,
   useCallback,
@@ -93,6 +94,9 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
         color,
         custom: true,
       });
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
       sheetRef.current?.dismiss();
     };
 

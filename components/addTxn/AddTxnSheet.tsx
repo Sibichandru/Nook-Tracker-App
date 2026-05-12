@@ -5,6 +5,7 @@ import {
   BottomSheetScrollView,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 import {
   forwardRef,
   useCallback,
@@ -99,8 +100,14 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
         } else {
           await addExpense(payload);
         }
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
         handleClose();
       } catch (e) {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Error,
+        ).catch(() => {});
         Alert.alert(
           'Could not save',
           e instanceof Error ? e.message : 'Unknown error',

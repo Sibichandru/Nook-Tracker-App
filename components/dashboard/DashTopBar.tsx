@@ -39,7 +39,6 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
   const initials = initialsFromName(user?.displayName);
   const displayName = user?.displayName?.split(' ')[0] ?? 'Guest';
 
-  // LOOP: verify on device — animated border opacity (0..1 over 0..20px scroll)
   const borderStyle = useAnimatedStyle(() => {
     const y = scrollY?.value ?? 0;
     return {
