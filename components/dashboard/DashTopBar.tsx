@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -56,7 +57,14 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
 
   return (
     <View style={styles.bar}>
-      <View style={styles.left}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        // Typed routes refresh on next `expo start`; cast covers the gap.
+        onPress={() => router.push('/settings' as never)}
+        style={styles.left}
+        hitSlop={6}
+      >
         <LinearGradient
           colors={['#f3c28a', '#c17a5a']}
           start={{ x: 0, y: 0 }}
@@ -69,7 +77,7 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.name}>{displayName}</Text>
         </View>
-      </View>
+      </Pressable>
 
       <View style={styles.right}>
         {FLAGS.enableSearch ? (
