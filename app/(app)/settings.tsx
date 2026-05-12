@@ -151,22 +151,40 @@ export default function SettingsScreen() {
           <CategoryManager />
         </Section>
 
-        {FLAGS.enableBudgets ? (
+        {FLAGS.enableBudgets || FLAGS.enableRecurring ? (
           <Section title="Money" palette={palette}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open budgets"
-              onPress={() => router.push('/budgets' as never)}
-              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
-            >
-              <Text style={styles.navLabel}>Budgets</Text>
-              <PIcon
-                name="chevron"
-                size={16}
-                color={palette.inkSoft}
-                strokeWidth={2}
-              />
-            </Pressable>
+            {FLAGS.enableBudgets ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open budgets"
+                onPress={() => router.push('/budgets' as never)}
+                style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.navLabel}>Budgets</Text>
+                <PIcon
+                  name="chevron"
+                  size={16}
+                  color={palette.inkSoft}
+                  strokeWidth={2}
+                />
+              </Pressable>
+            ) : null}
+            {FLAGS.enableRecurring ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open recurring expenses"
+                onPress={() => router.push('/recurring' as never)}
+                style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.navLabel}>Recurring expenses</Text>
+                <PIcon
+                  name="chevron"
+                  size={16}
+                  color={palette.inkSoft}
+                  strokeWidth={2}
+                />
+              </Pressable>
+            ) : null}
           </Section>
         ) : null}
 

@@ -20,6 +20,7 @@ import {
   RecurringRepo,
   SettingsRepo,
 } from './db/repositories';
+import { computeOccurrences } from './domain/recurring';
 import { DEFAULT_SETTINGS } from './domain/settings';
 import type {
   Budget,
@@ -94,6 +95,12 @@ type StoreActions = {
   setActiveChart: (chart: ChartKind) => void;
   setActivePeriod: (period: Period) => void;
   setActiveCategoryFilter: (categoryId: string | null) => void;
+
+  /**
+   * Materializes any missed occurrences for active recurring rules.
+   * Idempotent — safe to call multiple times in a session.
+   */
+  runRecurringEngine: () => Promise<void>;
 };
 
 const DEFAULT_FILTERS: Filters = {
@@ -115,7 +122,53 @@ const sortCategories = (cats: Category[]): Category[] =>
     return a.name.localeCompare(b.name);
   });
 
-export const useStore = create<StoreState & StoreActions>((set) => ({
+/**
+ * Side-effect helper: for each active rule, insert any missed expense rows and
+ * advance the rule's lastGenerated cursor. Returns what was created so callers
+ * can update store state.
+ */
+async function materializeRecurring(
+  rules: RecurringExpense[],
+): Promise<{ newExpenses: Expense[]; updatedRules: RecurringExpense[] }> {
+  const newExpenses: Expense[] = [];
+  const updatedRules: RecurringExpense[] = [];
+  const now = new Date();
+
+  for (const rule of rules) {
+    if (!rule.active) continue;
+    const dates = computeOccurrences(rule, now);
+    if (dates.length === 0) continue;
+
+    for (const date of dates) {
+      const e = await ExpensesRepo.create({
+        amount: rule.amount,
+        type: rule.type,
+        categoryId: rule.categoryId,
+        merchant: rule.merchant,
+        paymentMethod: rule.paymentMethod,
+        note: rule.note,
+        tags: [],
+        date,
+        time: '00:00',
+        source: 'recurring',
+        recurringId: rule.id,
+      });
+      newExpenses.push(e);
+    }
+
+    const last = dates[dates.length - 1];
+    await RecurringRepo.markGenerated(rule.id, last);
+    updatedRules.push({
+      ...rule,
+      lastGenerated: last,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return { newExpenses, updatedRules };
+}
+
+export const useStore = create<StoreState & StoreActions>((set, get) => ({
   hydrated: false,
   expenses: [],
   categories: [],
@@ -126,7 +179,7 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
   ui: DEFAULT_UI,
 
   hydrate: async () => {
-    const [categories, expenses, budgets, recurring, settings] =
+    const [categories, initialExpenses, budgets, recurring, settings] =
       await Promise.all([
         CategoriesRepo.list(),
         ExpensesRepo.list(),
@@ -134,17 +187,46 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
         RecurringRepo.listActive(),
         SettingsRepo.get(),
       ]);
+
+    // Catch up on missed occurrences from active recurring rules before
+    // exposing data to the UI. New expense rows get inserted and rule cursors
+    // advanced, then we re-list expenses + active rules to merge results.
+    const { newExpenses, updatedRules } = await materializeRecurring(recurring);
+    const expenses = [...newExpenses, ...initialExpenses].sort((a, b) => {
+      if (a.date !== b.date) return a.date > b.date ? -1 : 1;
+      return a.time > b.time ? -1 : 1;
+    });
+    const mergedRecurring = recurring.map(
+      (r) => updatedRules.find((u) => u.id === r.id) ?? r,
+    );
+
     set({
       categories,
       expenses,
       budgets,
-      recurring,
+      recurring: mergedRecurring,
       settings,
       ui: {
         ...DEFAULT_UI,
         activeChart: settings.defaultChart,
       },
       hydrated: true,
+    });
+  },
+
+  runRecurringEngine: async () => {
+    const rules = get().recurring.filter((r) => r.active);
+    const { newExpenses, updatedRules } = await materializeRecurring(rules);
+    if (newExpenses.length === 0 && updatedRules.length === 0) return;
+    set((s) => {
+      const expenses = [...newExpenses, ...s.expenses].sort((a, b) => {
+        if (a.date !== b.date) return a.date > b.date ? -1 : 1;
+        return a.time > b.time ? -1 : 1;
+      });
+      const recurring = s.recurring.map(
+        (r) => updatedRules.find((u) => u.id === r.id) ?? r,
+      );
+      return { expenses, recurring };
     });
   },
 
