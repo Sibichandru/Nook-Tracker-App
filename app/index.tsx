@@ -1,8 +1,8 @@
-import { Redirect } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Redirect } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { THEME } from '@/constants/theme';
-import { useAuth } from '@/lib/auth-context';
+import { THEME } from "@/constants/theme";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Index() {
   const { user, initializing } = useAuth();
@@ -15,14 +15,14 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={user ? '/dashboard' : '/login'} />;
+  return <Redirect href={user ? "/dashboard" : "/login"} />;
 }
 
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: THEME.light.bg,
   },
 });
