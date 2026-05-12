@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { FAB } from '@/components/ui/FAB';
+import { Field } from '@/components/ui/Field';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { StepDots } from '@/components/ui/StepDots';
+import { Toggle } from '@/components/ui/Toggle';
 import { type Palette, useTheme } from '@/lib/theme';
 
 export default function PrimitivesDevScreen() {
@@ -73,10 +78,78 @@ export default function PrimitivesDevScreen() {
             <Text style={styles.cardText}>Elevation: md</Text>
           </Card>
         </Section>
+
+        <Section title="SegmentedControl" palette={palette}>
+          <SegmentedControlDemo />
+        </Section>
+
+        <Section title="Toggle" palette={palette}>
+          <ToggleDemo />
+        </Section>
+
+        <Section title="Field" palette={palette}>
+          <View style={styles.fieldStack}>
+            <Field icon="note" label="Merchant" value="Swiggy · Kebabs Co." />
+            <Field
+              icon="calendar"
+              label="Date"
+              value="Today, 1:30 PM"
+              onPress={() => {}}
+            />
+            <Field
+              icon="card"
+              label="Payment"
+              value="HDFC Credit"
+              onPress={() => {}}
+            />
+          </View>
+        </Section>
+
+        <Section title="StepDots" palette={palette}>
+          <StepDotsDemo />
+        </Section>
       </ScrollView>
 
       <View style={styles.fabPin}>
         <FAB onPress={() => {}} />
+      </View>
+    </View>
+  );
+}
+
+function SegmentedControlDemo() {
+  const [value, setValue] = useState<'expense' | 'income'>('expense');
+  return (
+    <SegmentedControl
+      options={[
+        { value: 'expense', label: 'Expense' },
+        { value: 'income', label: 'Income' },
+      ]}
+      value={value}
+      onChange={setValue}
+    />
+  );
+}
+
+function ToggleDemo() {
+  const [a, setA] = useState(true);
+  const [b, setB] = useState(false);
+  return (
+    <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
+      <Toggle value={a} onChange={setA} accessibilityLabel="Demo toggle A" />
+      <Toggle value={b} onChange={setB} accessibilityLabel="Demo toggle B" />
+    </View>
+  );
+}
+
+function StepDotsDemo() {
+  const [step, setStep] = useState(0);
+  return (
+    <View style={{ gap: 12, alignItems: 'center' }}>
+      <StepDots total={3} current={step} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button label="Prev" size="sm" onPress={() => setStep(Math.max(0, step - 1))} />
+        <Button label="Next" size="sm" onPress={() => setStep(Math.min(2, step + 1))} />
       </View>
     </View>
   );
@@ -142,6 +215,9 @@ function makeStyles(palette: Palette) {
     cardText: {
       fontFamily: 'Inter_400Regular',
       color: palette.ink,
+    },
+    fieldStack: {
+      gap: 8,
     },
     fabPin: {
       position: 'absolute',
