@@ -1,7 +1,7 @@
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,10 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ACCENTS, THEME } from '@/constants/theme';
+import { ACCENTS } from '@/constants/theme';
 import { signInWithGoogle } from '@/lib/auth';
+import { type Palette, useTheme } from '@/lib/theme';
 
 export default function LoginScreen() {
+  const { palette, effectiveScheme } = useTheme();
+  const styles = useMemo(() => makeStyles(palette), [palette]);
+
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +45,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
+      <StatusBar style={effectiveScheme === 'dark' ? 'light' : 'dark'} />
 
       <View style={styles.topBar}>
         <Pressable
@@ -99,7 +103,7 @@ export default function LoginScreen() {
           ]}
         >
           {signingIn ? (
-            <ActivityIndicator color={THEME.light.ink} />
+            <ActivityIndicator color={palette.ink} />
           ) : (
             <>
               <AntDesign name="google" size={18} color="#4285F4" />
@@ -134,134 +138,139 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: THEME.light.bg,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 24,
-  },
-  skipLink: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: THEME.light.inkMuted,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 32,
-  },
-  brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: ACCENTS.plum.base,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandGlyph: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  brandName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: THEME.light.ink,
-  },
-  headline: {
-    fontSize: 36,
-    fontWeight: '800',
-    lineHeight: 42,
-    letterSpacing: -1,
-    color: THEME.light.ink,
-    marginBottom: 16,
-  },
-  supporting: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: THEME.light.inkMuted,
-    marginBottom: 20,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: THEME.light.chipBg,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: THEME.light.ink,
-  },
-  spacer: {
-    flex: 1,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: THEME.light.surface,
-    borderWidth: 1,
-    borderColor: THEME.light.border,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.light.ink,
-  },
-  error: {
-    fontSize: 13,
-    color: THEME.light.negative,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  guestButton: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  guestButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: THEME.light.inkMuted,
-  },
-  footer: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: THEME.light.inkSoft,
-  },
-  footerLink: {
-    textDecorationLine: 'underline',
-    color: THEME.light.inkMuted,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-});
+function makeStyles(palette: Palette) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: palette.bg,
+    },
+    topBar: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      padding: 24,
+    },
+    skipLink: {
+      fontFamily: 'Inter_500Medium',
+      fontSize: 15,
+      color: palette.inkMuted,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 24,
+      paddingVertical: 24,
+    },
+    brandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 32,
+    },
+    brandIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: ACCENTS.plum.base,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    brandGlyph: {
+      color: '#FFFFFF',
+      fontFamily: 'Inter_700Bold',
+      fontSize: 18,
+    },
+    brandName: {
+      fontFamily: 'Inter_700Bold',
+      fontSize: 20,
+      color: palette.ink,
+    },
+    headline: {
+      fontFamily: 'DMSerifDisplay_400Regular',
+      fontSize: 36,
+      lineHeight: 42,
+      letterSpacing: -1,
+      color: palette.ink,
+      marginBottom: 16,
+    },
+    supporting: {
+      fontFamily: 'Inter_400Regular',
+      fontSize: 15,
+      lineHeight: 22,
+      color: palette.inkMuted,
+      marginBottom: 20,
+    },
+    chips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: palette.chipBg,
+    },
+    chipText: {
+      fontFamily: 'Inter_500Medium',
+      fontSize: 13,
+      color: palette.ink,
+    },
+    spacer: {
+      flex: 1,
+    },
+    googleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+      borderRadius: 16,
+      backgroundColor: palette.surface,
+      borderWidth: 1,
+      borderColor: palette.border,
+      marginBottom: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 1,
+    },
+    googleButtonText: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 16,
+      color: palette.ink,
+    },
+    error: {
+      fontFamily: 'Inter_400Regular',
+      fontSize: 13,
+      color: palette.negative,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    guestButton: {
+      alignItems: 'center',
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    guestButtonText: {
+      fontFamily: 'Inter_500Medium',
+      fontSize: 15,
+      color: palette.inkMuted,
+    },
+    footer: {
+      fontFamily: 'Inter_400Regular',
+      textAlign: 'center',
+      fontSize: 12,
+      color: palette.inkSoft,
+    },
+    footerLink: {
+      textDecorationLine: 'underline',
+      color: palette.inkMuted,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+  });
+}
