@@ -18,6 +18,7 @@ import { PIcon } from '@/components/ui/PIcon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { signOutAll } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
+import { FLAGS } from '@/lib/featureFlags';
 import { useStore } from '@/lib/store';
 import {
   type AccentKey,
@@ -150,6 +151,25 @@ export default function SettingsScreen() {
           <CategoryManager />
         </Section>
 
+        {FLAGS.enableBudgets ? (
+          <Section title="Money" palette={palette}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open budgets"
+              onPress={() => router.push('/budgets' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Budgets</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+          </Section>
+        ) : null}
+
         {user ? (
           <View style={styles.signOutWrap}>
             <Button
@@ -281,6 +301,17 @@ function makeStyles(palette: Palette) {
       color: palette.inkSoft,
       textAlign: 'center',
       marginTop: 12,
+    },
+    navRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    navLabel: {
+      fontFamily: 'Inter_500Medium',
+      fontSize: 14,
+      color: palette.ink,
     },
   });
 }
