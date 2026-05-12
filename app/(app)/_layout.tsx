@@ -1,5 +1,10 @@
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 
 export default function AppLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <BottomSheetModalProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </BottomSheetModalProvider>
+  );
 }

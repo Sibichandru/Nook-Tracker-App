@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { useMemo, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -9,6 +9,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  AddTxnSheet,
+  type AddTxnSheetRef,
+} from '@/components/addTxn/AddTxnSheet';
 import { DashTopBar } from '@/components/dashboard/DashTopBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { HeroCard } from '@/components/dashboard/HeroCard';
@@ -109,9 +113,8 @@ export default function DashboardScreen() {
     return { opacity, transform: [{ translateY }] };
   });
 
-  const handleAddExpense = () => {
-    Alert.alert('Add transaction', 'Sheet coming in iter 18');
-  };
+  const sheetRef = useRef<AddTxnSheetRef>(null);
+  const handleAddExpense = () => sheetRef.current?.openCreate();
 
   const handleTxnPress = (_e: Expense) => {
     // Edit flow wires up in iter 20.
@@ -145,6 +148,7 @@ export default function DashboardScreen() {
       <View style={styles.fabPin}>
         <FAB onPress={handleAddExpense} accessibilityLabel="Add transaction" />
       </View>
+      <AddTxnSheet ref={sheetRef} />
     </SafeAreaView>
   );
 }
