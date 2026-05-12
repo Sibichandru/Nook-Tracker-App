@@ -92,7 +92,12 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <PeriodBar />
-        <HeroCard label={label} total={total} trendPct={trendPct} />
+        <HeroCard
+          label={label}
+          total={total}
+          trendPct={trendPct}
+          expenses={expensesInPeriod}
+        />
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}

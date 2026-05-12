@@ -1,22 +1,47 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
-import { PIcon } from '@/components/ui/PIcon';
+import {
+  dailyTotals,
+  topCategoryBuckets,
+} from '@/lib/domain/charts';
 import { formatINR } from '@/lib/domain/currency';
+import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
+import type { Category, ChartKind, Expense } from '@/lib/types';
 
+import { ChartDropdown } from './ChartDropdown';
 import { ChartPlaceholder } from './ChartPlaceholder';
+import { BarChart } from './charts/BarChart';
+import { DonutChart } from './charts/DonutChart';
 
 type HeroCardProps = {
   label: string;
   total: number;
   /** Percentage change vs previous period, or null if previous period had no data */
   trendPct: number | null;
+  /** Expenses already filtered for the active period */
+  expenses: Expense[];
 };
 
-export function HeroCard({ label, total, trendPct }: HeroCardProps) {
+export function HeroCard({ label, total, trendPct, expenses }: HeroCardProps) {
   const { palette } = useTheme();
   const styles = makeStyles(palette);
+
+  const activeChart = useStore((s) => s.ui.activeChart);
+  const setActiveChart = useStore((s) => s.setActiveChart);
+  const categories = useStore((s) => s.categories);
+
+  const categoriesById = useMemo<Map<string, Category>>(
+    () => new Map(categories.map((c) => [c.id, c])),
+    [categories],
+  );
+
+  const chart = useMemo(
+    () => renderChart(activeChart, expenses, categoriesById),
+    [activeChart, expenses, categoriesById],
+  );
 
   const trendIsUp = trendPct !== null && trendPct > 0;
   const trendColor = trendIsUp ? palette.negative : palette.positive;
@@ -38,19 +63,31 @@ export function HeroCard({ label, total, trendPct }: HeroCardProps) {
             </View>
           ) : null}
         </View>
-        <View style={styles.dropdownStub}>
-          <Text style={styles.dropdownText}>Bar</Text>
-          <PIcon
-            name="chevdown"
-            size={14}
-            color={palette.inkMuted}
-            strokeWidth={2}
-          />
-        </View>
+        <ChartDropdown value={activeChart} onChange={setActiveChart} />
       </View>
-      <ChartPlaceholder />
+      {chart}
     </Card>
   );
+}
+
+function renderChart(
+  kind: ChartKind,
+  expenses: Expense[],
+  categoriesById: Map<string, Category>,
+) {
+  switch (kind) {
+    case 'bar': {
+      const data = dailyTotals(expenses);
+      return <BarChart data={data} />;
+    }
+    case 'donut': {
+      const buckets = topCategoryBuckets(expenses, categoriesById);
+      return <DonutChart buckets={buckets} />;
+    }
+    default:
+      // line + budget arrive in iter 14
+      return <ChartPlaceholder />;
+  }
 }
 
 function makeStyles(palette: Palette) {
@@ -92,22 +129,6 @@ function makeStyles(palette: Palette) {
     trendText: {
       fontFamily: 'Inter_600SemiBold',
       fontSize: 12.5,
-    },
-    dropdownStub: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: palette.chipBg,
-      borderWidth: 1,
-      borderColor: palette.border,
-    },
-    dropdownText: {
-      fontFamily: 'Inter_500Medium',
-      fontSize: 12.5,
-      color: palette.ink,
     },
   });
 }
