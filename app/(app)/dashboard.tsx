@@ -3,6 +3,7 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DashTopBar } from '@/components/dashboard/DashTopBar';
+import { FilterChips } from '@/components/dashboard/FilterChips';
 import { HeroCard } from '@/components/dashboard/HeroCard';
 import { PeriodBar } from '@/components/dashboard/PeriodBar';
 import { TransactionsPane } from '@/components/dashboard/TransactionsPane';
@@ -98,6 +99,7 @@ export default function DashboardScreen() {
           trendPct={trendPct}
           expenses={expensesInPeriod}
         />
+        <FilterChips />
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}
