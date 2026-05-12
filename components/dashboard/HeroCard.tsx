@@ -1,3 +1,5 @@
+import { endOfMonth } from 'date-fns/endOfMonth';
+import { startOfMonth } from 'date-fns/startOfMonth';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -12,16 +14,17 @@ import { type Palette, useTheme } from '@/lib/theme';
 import type { Category, ChartKind, Expense } from '@/lib/types';
 
 import { ChartDropdown } from './ChartDropdown';
-import { ChartPlaceholder } from './ChartPlaceholder';
 import { BarChart } from './charts/BarChart';
+import { BudgetRing } from './charts/BudgetRing';
 import { DonutChart } from './charts/DonutChart';
+import { LineChart } from './charts/LineChart';
 
 type HeroCardProps = {
   label: string;
   total: number;
   /** Percentage change vs previous period, or null if previous period had no data */
   trendPct: number | null;
-  /** Expenses already filtered for the active period */
+  /** Expenses already filtered for the active period (used by donut) */
   expenses: Expense[];
 };
 
@@ -31,16 +34,31 @@ export function HeroCard({ label, total, trendPct, expenses }: HeroCardProps) {
 
   const activeChart = useStore((s) => s.ui.activeChart);
   const setActiveChart = useStore((s) => s.setActiveChart);
+  const allExpenses = useStore((s) => s.expenses);
   const categories = useStore((s) => s.categories);
+  const budgets = useStore((s) => s.budgets);
 
   const categoriesById = useMemo<Map<string, Category>>(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories],
   );
 
+  const overallBudget = useMemo(
+    () => budgets.find((b) => b.type === 'overall') ?? null,
+    [budgets],
+  );
+
   const chart = useMemo(
-    () => renderChart(activeChart, expenses, categoriesById),
-    [activeChart, expenses, categoriesById],
+    () =>
+      renderChart(
+        activeChart,
+        expenses,
+        allExpenses,
+        categoriesById,
+        total,
+        overallBudget?.amount ?? 0,
+      ),
+    [activeChart, expenses, allExpenses, categoriesById, total, overallBudget],
   );
 
   const trendIsUp = trendPct !== null && trendPct > 0;
@@ -72,21 +90,34 @@ export function HeroCard({ label, total, trendPct, expenses }: HeroCardProps) {
 
 function renderChart(
   kind: ChartKind,
-  expenses: Expense[],
+  expensesInPeriod: Expense[],
+  allExpenses: Expense[],
   categoriesById: Map<string, Category>,
+  used: number,
+  monthlyBudget: number,
 ) {
   switch (kind) {
     case 'bar': {
-      const data = dailyTotals(expenses);
+      // 24-day window regardless of active period
+      const data = dailyTotals(allExpenses, 24);
       return <BarChart data={data} />;
     }
     case 'donut': {
-      const buckets = topCategoryBuckets(expenses, categoriesById);
+      const buckets = topCategoryBuckets(expensesInPeriod, categoriesById);
       return <DonutChart buckets={buckets} />;
     }
-    default:
-      // line + budget arrive in iter 14
-      return <ChartPlaceholder />;
+    case 'line': {
+      const data = dailyTotals(allExpenses, 30);
+      // Pro-rate monthly budget to a daily target
+      const now = new Date();
+      const daysInMonth =
+        endOfMonth(now).getDate() - startOfMonth(now).getDate() + 1;
+      const budgetPerDay =
+        monthlyBudget > 0 ? monthlyBudget / daysInMonth : null;
+      return <LineChart data={data} budgetPerDay={budgetPerDay} />;
+    }
+    case 'budget':
+      return <BudgetRing used={used} budget={monthlyBudget} />;
   }
 }
 

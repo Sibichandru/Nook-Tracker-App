@@ -1,7 +1,9 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BarChart } from '@/components/dashboard/charts/BarChart';
+import { BudgetRing } from '@/components/dashboard/charts/BudgetRing';
 import { DonutChart } from '@/components/dashboard/charts/DonutChart';
+import { LineChart } from '@/components/dashboard/charts/LineChart';
 import { Card } from '@/components/ui/Card';
 import { type Palette, useTheme } from '@/lib/theme';
 
@@ -47,6 +49,39 @@ export default function ChartsDevScreen() {
       <Section title="DonutChart — empty buckets" palette={palette}>
         <Card padding={16} radius={20} elevation="sm">
           <DonutChart buckets={[]} />
+        </Card>
+      </Section>
+
+      <Section
+        title="LineChart — 30 days with budget overlay"
+        palette={palette}
+      >
+        <Card padding={16} radius={20} elevation="sm">
+          <LineChart data={MOCK_BAR_DATA.slice(-30)} budgetPerDay={700} />
+        </Card>
+      </Section>
+
+      <Section title="LineChart — no budget" palette={palette}>
+        <Card padding={16} radius={20} elevation="sm">
+          <LineChart data={MOCK_BAR_DATA.slice(-30)} />
+        </Card>
+      </Section>
+
+      <Section title="BudgetRing — under budget" palette={palette}>
+        <Card padding={16} radius={20} elevation="sm">
+          <BudgetRing used={32500} budget={50000} />
+        </Card>
+      </Section>
+
+      <Section title="BudgetRing — over budget" palette={palette}>
+        <Card padding={16} radius={20} elevation="sm">
+          <BudgetRing used={58200} budget={50000} />
+        </Card>
+      </Section>
+
+      <Section title="BudgetRing — no budget set" palette={palette}>
+        <Card padding={16} radius={20} elevation="sm">
+          <BudgetRing used={5000} budget={0} />
         </Card>
       </Section>
     </ScrollView>

@@ -7,12 +7,11 @@ import type { ChartKind } from '@/lib/types';
 
 type Option = { value: ChartKind; label: string };
 
-/**
- * Iter 13 ships bar + donut. Iter 14 will add 'line' and 'budget'.
- */
 const OPTIONS: Option[] = [
   { value: 'bar', label: 'Daily' },
   { value: 'donut', label: 'By category' },
+  { value: 'line', label: 'Trend' },
+  { value: 'budget', label: 'Budget' },
 ];
 
 type ChartDropdownProps = {
