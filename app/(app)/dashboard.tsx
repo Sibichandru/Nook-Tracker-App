@@ -115,10 +115,8 @@ export default function DashboardScreen() {
 
   const sheetRef = useRef<AddTxnSheetRef>(null);
   const handleAddExpense = () => sheetRef.current?.openCreate();
-
-  const handleTxnPress = (_e: Expense) => {
-    // Edit flow wires up in iter 20.
-  };
+  const handleTxnPress = (expense: Expense) =>
+    sheetRef.current?.openEdit(expense);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
