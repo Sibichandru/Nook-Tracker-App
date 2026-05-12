@@ -18,6 +18,9 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Claude Code harness state
+.claude/
+
 # Metro
 .metro-health-check*
 
