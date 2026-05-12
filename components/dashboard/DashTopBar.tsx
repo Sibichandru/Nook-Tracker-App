@@ -48,7 +48,7 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
   });
 
   const handleSearch = () => {
-    if (__DEV__) console.warn('Search screen not implemented yet');
+    router.push('/search' as never);
   };
 
   const handleBell = () => {
