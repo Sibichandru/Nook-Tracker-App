@@ -2,6 +2,7 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import {
@@ -12,17 +13,23 @@ import {
   useReducer,
   useRef,
 } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { PIcon } from '@/components/ui/PIcon';
 import { StepDots } from '@/components/ui/StepDots';
-import { validateStep } from '@/lib/domain/transactionDraft';
+import {
+  validateForSave,
+  validateStep,
+} from '@/lib/domain/transactionDraft';
+import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
 import type { Expense } from '@/lib/types';
 
-import { initialSheetState, sheetReducer } from './sheetState';
 import { StepAmount } from './StepAmount';
+import { StepCategory } from './StepCategory';
+import { StepDetails } from './StepDetails';
+import { initialSheetState, sheetReducer, type SheetStep } from './sheetState';
 
 export type AddTxnSheetRef = {
   openCreate: () => void;
@@ -38,6 +45,9 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
     const [state, dispatch] = useReducer(sheetReducer, initialSheetState);
+    const addExpense = useStore((s) => s.addExpense);
+    const updateExpense = useStore((s) => s.updateExpense);
+    const deleteExpense = useStore((s) => s.deleteExpense);
 
     useImperativeHandle(
       ref,
@@ -57,18 +67,79 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
 
     const handleClose = useCallback(() => sheetRef.current?.dismiss(), []);
 
-    const handlePrimary = () => {
-      const errors = validateStep(state.draft, state.step);
-      if (state.mode === 'create' && Object.keys(errors).length > 0) {
+    const handleSave = async () => {
+      const errors = validateForSave(state.draft);
+      if (Object.keys(errors).length > 0) {
         dispatch({ type: 'set-errors', errors });
+        // Send user back to the step that has the first error
+        const target: SheetStep = errors.amount ? 0 : errors.categoryId ? 1 : 2;
+        dispatch({ type: 'go-to', step: target });
         return;
       }
-      if (state.step < 2) {
-        dispatch({ type: 'next' });
-      } else {
-        // Save handler arrives in iter 19; close for now.
+      // categoryId is guaranteed non-null after validateForSave passed
+      if (!state.draft.categoryId) return;
+
+      const payload = {
+        amount: state.draft.amount,
+        type: state.draft.type,
+        categoryId: state.draft.categoryId,
+        merchant: state.draft.merchant,
+        paymentMethod: state.draft.paymentMethod,
+        note: state.draft.note,
+        tags: state.draft.tags,
+        date: state.draft.date,
+        time: state.draft.time,
+        source: 'manual' as const,
+        recurringId: null,
+      };
+
+      try {
+        if (state.mode === 'edit' && state.initial) {
+          await updateExpense(state.initial.id, payload);
+        } else {
+          await addExpense(payload);
+        }
         handleClose();
+      } catch (e) {
+        Alert.alert(
+          'Could not save',
+          e instanceof Error ? e.message : 'Unknown error',
+        );
       }
+    };
+
+    const handleDelete = () => {
+      if (state.mode !== 'edit' || !state.initial) return;
+      Alert.alert(
+        'Delete this transaction?',
+        'This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              if (state.initial) {
+                await deleteExpense(state.initial.id);
+              }
+              handleClose();
+            },
+          },
+        ],
+      );
+    };
+
+    const handlePrimary = () => {
+      if (state.step < 2) {
+        const errors = validateStep(state.draft, state.step);
+        if (state.mode === 'create' && Object.keys(errors).length > 0) {
+          dispatch({ type: 'set-errors', errors });
+          return;
+        }
+        dispatch({ type: 'next' });
+        return;
+      }
+      void handleSave();
     };
 
     const handleBack = () => {
@@ -128,7 +199,11 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
             <StepDots total={3} current={state.step} />
           </View>
 
-          <View style={styles.body}>
+          <BottomSheetScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            showsVerticalScrollIndicator={false}
+          >
             {state.step === 0 ? (
               <StepAmount
                 amount={state.draft.amount}
@@ -141,14 +216,22 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
                   dispatch({ type: 'patch', patch: { type: t } })
                 }
               />
+            ) : state.step === 1 ? (
+              <StepCategory
+                categoryId={state.draft.categoryId}
+                error={state.errors.categoryId}
+                onCategoryChange={(id) =>
+                  dispatch({ type: 'patch', patch: { categoryId: id } })
+                }
+              />
             ) : (
-              <View style={styles.placeholder}>
-                <Text style={styles.placeholderText}>
-                  Step {state.step + 1} wires up in iter 19
-                </Text>
-              </View>
+              <StepDetails
+                draft={state.draft}
+                onPatch={(patch) => dispatch({ type: 'patch', patch })}
+                onDelete={state.mode === 'edit' ? handleDelete : undefined}
+              />
             )}
-          </View>
+          </BottomSheetScrollView>
 
           <View style={styles.footer}>
             <Button
@@ -169,14 +252,15 @@ function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      padding: 18,
+      paddingHorizontal: 18,
+      paddingTop: 6,
+      paddingBottom: 18,
       gap: 12,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 0,
     },
     iconButton: {
       width: 36,
@@ -202,20 +286,14 @@ function makeStyles(palette: Palette) {
     },
     body: {
       flex: 1,
+    },
+    bodyContent: {
       paddingTop: 8,
-    },
-    placeholder: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    placeholderText: {
-      fontFamily: 'Inter_500Medium',
-      fontSize: 13,
-      color: palette.inkSoft,
+      paddingBottom: 16,
+      gap: 12,
     },
     footer: {
-      paddingBottom: 8,
+      paddingTop: 4,
     },
   });
 }
