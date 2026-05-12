@@ -15,6 +15,7 @@ import {
 } from '@/components/addTxn/AddTxnSheet';
 import { DashTopBar } from '@/components/dashboard/DashTopBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
+import { FilterSheet, type FilterSheetRef } from '@/components/dashboard/FilterSheet';
 import { HeroCard } from '@/components/dashboard/HeroCard';
 import { PeriodBar } from '@/components/dashboard/PeriodBar';
 import { TransactionsPane } from '@/components/dashboard/TransactionsPane';
@@ -114,6 +115,7 @@ export default function DashboardScreen() {
   });
 
   const sheetRef = useRef<AddTxnSheetRef>(null);
+  const filterSheetRef = useRef<FilterSheetRef>(null);
   const handleAddExpense = () => sheetRef.current?.openCreate();
   const handleTxnPress = (expense: Expense) =>
     sheetRef.current?.openEdit(expense);
@@ -136,7 +138,7 @@ export default function DashboardScreen() {
             expenses={expensesInPeriod}
           />
         </Animated.View>
-        <FilterChips />
+        <FilterChips filterSheetRef={filterSheetRef} />
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}
@@ -147,6 +149,7 @@ export default function DashboardScreen() {
         <FAB onPress={handleAddExpense} accessibilityLabel="Add transaction" />
       </View>
       <AddTxnSheet ref={sheetRef} />
+      <FilterSheet ref={filterSheetRef} />
     </SafeAreaView>
   );
 }
