@@ -16,6 +16,9 @@ export const FLAGS = {
   enableExport: true,
   enableRecurring: true,
   enableNotifications: false,
+  // `enableDevRoutes` gates the /dev/* sandbox routes used to visually verify
+  // primitives and icons. True in development builds, false in production.
+  enableDevRoutes: __DEV__,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
