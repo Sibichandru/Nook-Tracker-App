@@ -4,7 +4,10 @@
  * without RN/SVG.
  */
 
+import { format } from 'date-fns/format';
+import { startOfMonth } from 'date-fns/startOfMonth';
 import { subDays } from 'date-fns/subDays';
+import { subMonths } from 'date-fns/subMonths';
 
 import type { Category, Expense } from '@/lib/types';
 
@@ -51,6 +54,34 @@ export type CategoryBucket = {
  * amount descending. Income is excluded. Unknown categories fall back to a
  * neutral grey "Other".
  */
+/**
+ * Returns the last `months` months of expense totals as DailyTotal-shaped
+ * records (with `date` = first of the month). Lets us reuse LineChart for the
+ * Reports screen's month-over-month trend without a separate chart component.
+ */
+export function monthlyTotalsAsDaily(
+  expenses: Expense[],
+  months: number = 6,
+  ref: Date = new Date(),
+): DailyTotal[] {
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < months; i++) {
+    const monthStart = startOfMonth(subMonths(ref, months - 1 - i));
+    buckets.set(format(monthStart, 'yyyy-MM-dd'), 0);
+  }
+  for (const e of expenses) {
+    if (e.type !== 'expense') continue;
+    const monthKey = format(startOfMonth(new Date(e.date)), 'yyyy-MM-dd');
+    if (buckets.has(monthKey)) {
+      buckets.set(monthKey, (buckets.get(monthKey) ?? 0) + e.amount);
+    }
+  }
+  return Array.from(buckets.entries()).map(([date, amount]) => ({
+    date,
+    amount,
+  }));
+}
+
 export function topCategoryBuckets(
   expenses: Expense[],
   categoriesById: Map<string, Category>,

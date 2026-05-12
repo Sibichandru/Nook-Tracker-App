@@ -51,8 +51,8 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
     router.push('/search' as never);
   };
 
-  const handleBell = () => {
-    // Notification screen not in v1.0 scope.
+  const handleReports = () => {
+    router.push('/reports' as never);
   };
 
   return (
@@ -96,25 +96,22 @@ export function DashTopBar({ scrollY }: DashTopBarProps) {
             />
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Notifications"
-          onPress={handleBell}
-          style={styles.iconButton}
-          hitSlop={6}
-        >
-          <View>
+        {FLAGS.enableReports ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reports"
+            onPress={handleReports}
+            style={styles.iconButton}
+            hitSlop={6}
+          >
             <PIcon
-              name="bell"
+              name="trend"
               size={20}
               color={palette.ink}
               strokeWidth={2}
             />
-            {FLAGS.enableNotifications ? (
-              <View style={[styles.dot, { backgroundColor: palette.negative }]} />
-            ) : null}
-          </View>
-        </Pressable>
+          </Pressable>
+        ) : null}
       </View>
 
       <Animated.View
