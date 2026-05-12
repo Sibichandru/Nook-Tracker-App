@@ -12,12 +12,13 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import {
-  type Auth,
-  getAuth,
-  getReactNativePersistence,
-  initializeAuth,
-} from 'firebase/auth';
+import { type Auth, getAuth, initializeAuth } from 'firebase/auth';
+// `getReactNativePersistence` is exported at runtime by firebase/auth but
+// missing from the TypeScript types in firebase@12. Split-import + ts-ignore
+// keeps type-check clean without disabling the runtime behavior.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore -- runtime export present, types incomplete in firebase@12
+import { getReactNativePersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCGXcxGPfxMceR2UHFau_IJYy6f1zl6mHc',
