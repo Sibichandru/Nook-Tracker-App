@@ -13,6 +13,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 import { migrations } from './migrations';
+import { seedIfNeeded } from './seed';
 
 const DB_NAME = 'nook.db';
 
@@ -28,6 +29,7 @@ export async function getDatabase(): Promise<SQLiteDatabase> {
       const db = await openDatabaseAsync(DB_NAME);
       await ensureSchemaVersionTable(db);
       await runMigrations(db);
+      await seedIfNeeded(db);
       dbInstance = db;
       initialized = true;
       return db;
