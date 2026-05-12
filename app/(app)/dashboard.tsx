@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DashTopBar } from '@/components/dashboard/DashTopBar';
 import { HeroCard } from '@/components/dashboard/HeroCard';
 import { PeriodBar } from '@/components/dashboard/PeriodBar';
+import { TransactionsPane } from '@/components/dashboard/TransactionsPane';
 import { FAB } from '@/components/ui/FAB';
 import {
   currentPeriodLabel,
@@ -12,6 +14,7 @@ import {
 } from '@/lib/domain/periods';
 import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
+import type { Expense } from '@/lib/types';
 
 export default function DashboardScreen() {
   const { palette } = useTheme();
@@ -19,23 +22,53 @@ export default function DashboardScreen() {
 
   const expenses = useStore((s) => s.expenses);
   const activePeriod = useStore((s) => s.ui.activePeriod);
+  const activeCategoryFilter = useStore((s) => s.ui.activeCategoryFilter);
 
   const now = new Date();
-  const { start, end } = rangeFor(activePeriod, now);
-  const prev = previousRange(activePeriod, now);
+  const { start, end } = useMemo(
+    () => rangeFor(activePeriod, now),
+    // `now` recomputes on every render; the values stabilize per period change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activePeriod, now.toDateString()],
+  );
+  const prev = useMemo(
+    () => previousRange(activePeriod, now),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activePeriod, now.toDateString()],
+  );
 
-  const total = expenses
-    .filter(
-      (e) => e.type === 'expense' && e.date >= start && e.date <= end,
-    )
-    .reduce((sum, e) => sum + e.amount, 0);
+  const expensesInPeriod = useMemo(
+    () =>
+      expenses.filter((e) => {
+        if (e.date < start || e.date > end) return false;
+        if (activeCategoryFilter && e.categoryId !== activeCategoryFilter) {
+          return false;
+        }
+        return true;
+      }),
+    [expenses, start, end, activeCategoryFilter],
+  );
 
-  const prevTotal = expenses
-    .filter(
-      (e) =>
-        e.type === 'expense' && e.date >= prev.start && e.date <= prev.end,
-    )
-    .reduce((sum, e) => sum + e.amount, 0);
+  const total = useMemo(
+    () =>
+      expensesInPeriod
+        .filter((e) => e.type === 'expense')
+        .reduce((sum, e) => sum + e.amount, 0),
+    [expensesInPeriod],
+  );
+
+  const prevTotal = useMemo(
+    () =>
+      expenses
+        .filter(
+          (e) =>
+            e.type === 'expense' &&
+            e.date >= prev.start &&
+            e.date <= prev.end,
+        )
+        .reduce((sum, e) => sum + e.amount, 0),
+    [expenses, prev.start, prev.end],
+  );
 
   const trendPct =
     prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null;
@@ -47,6 +80,10 @@ export default function DashboardScreen() {
     Alert.alert('Add transaction', 'Sheet coming in iter 18');
   };
 
+  const handleTxnPress = (_e: Expense) => {
+    // Edit flow wires up in iter 20.
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <DashTopBar />
@@ -56,6 +93,10 @@ export default function DashboardScreen() {
       >
         <PeriodBar />
         <HeroCard label={label} total={total} trendPct={trendPct} />
+        <TransactionsPane
+          expenses={expensesInPeriod}
+          onPressExpense={handleTxnPress}
+        />
         <View style={styles.tailSpacer} />
       </ScrollView>
       <View style={styles.fabPin}>
@@ -80,7 +121,7 @@ function makeStyles(palette: Palette) {
       paddingBottom: 120,
     },
     tailSpacer: {
-      height: 200,
+      height: 40,
     },
     fabPin: {
       position: 'absolute',
