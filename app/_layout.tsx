@@ -10,12 +10,14 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/auth-context';
-import { ThemeProvider } from '@/lib/theme';
+import { useStore } from '@/lib/store';
+import { ThemeProvider, useTheme } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // best effort — splash will still hide automatically if this throws
@@ -44,11 +46,47 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </AuthProvider>
+          <HydrationGate>
+            <AuthProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </AuthProvider>
+          </HydrationGate>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+/**
+ * Blocks render until the local store has loaded data from SQLite. Lives here
+ * (rather than in lib/store) so it can use the theme palette for the splash
+ * placeholder.
+ */
+function HydrationGate({ children }: { children: ReactNode }) {
+  const hydrated = useStore((s) => s.hydrated);
+  const hydrate = useStore((s) => s.hydrate);
+  const { palette } = useTheme();
+
+  useEffect(() => {
+    hydrate().catch((e) => {
+      // Surface to console for now; iteration 29 (polish) adds an error UI.
+      console.error('Store hydration failed:', e);
+    });
+  }, [hydrate]);
+
+  if (!hydrated) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: palette.bg,
+        }}
+      >
+        <ActivityIndicator color={palette.ink} />
+      </View>
+    );
+  }
+  return <>{children}</>;
 }
