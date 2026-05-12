@@ -18,6 +18,7 @@ import { PIcon } from '@/components/ui/PIcon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { signOutAll } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
+import { exportAndShareExpenses } from '@/lib/export';
 import { FLAGS } from '@/lib/featureFlags';
 import { useStore } from '@/lib/store';
 import {
@@ -34,6 +35,20 @@ export default function SettingsScreen() {
   const { user } = useAuth();
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
+  const expenses = useStore((s) => s.expenses);
+  const categories = useStore((s) => s.categories);
+
+  const handleExport = async () => {
+    try {
+      const categoriesById = new Map(categories.map((c) => [c.id, c]));
+      await exportAndShareExpenses(expenses, categoriesById);
+    } catch (e) {
+      Alert.alert(
+        'Could not export',
+        e instanceof Error ? e.message : 'Unknown error',
+      );
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign out?', 'You can sign back in any time.', [
@@ -150,6 +165,25 @@ export default function SettingsScreen() {
         <Section title="Categories" palette={palette}>
           <CategoryManager />
         </Section>
+
+        {FLAGS.enableExport ? (
+          <Section title="Data" palette={palette}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Export expenses to CSV"
+              onPress={handleExport}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Export to CSV</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+          </Section>
+        ) : null}
 
         {FLAGS.enableBudgets || FLAGS.enableRecurring ? (
           <Section title="Money" palette={palette}>
