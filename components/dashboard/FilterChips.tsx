@@ -13,7 +13,7 @@ type FilterChipsProps = {
 
 /**
  * Horizontally scrollable row of category filter chips. The leading "Filters"
- * chip opens the full filter sheet (iter 21). Tapping a category chip sets
+ * chip opens the full filter sheet. Tapping a category chip sets
  * `ui.activeCategoryFilter`, which narrows the dashboard's transactions list.
  */
 export const FilterChips = forwardRef<ScrollView, FilterChipsProps>(

@@ -14,7 +14,7 @@ import type { PaymentMethod } from '@/lib/types';
 type StepDetailsProps = {
   draft: TransactionDraft;
   onPatch: (patch: Partial<TransactionDraft>) => void;
-  /** Set in edit mode (iter 20); when provided, renders a delete button */
+  /** Set in edit mode; when provided, renders a delete button */
   onDelete?: () => void;
 };
 

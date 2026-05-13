@@ -26,7 +26,7 @@ export function StepCategory({
   const handleNewCategory = () => {
     Alert.alert(
       'Custom categories',
-      'Custom categories arrive with the Settings screen (iter 22).',
+      'Open Settings → Categories to add a new one.',
     );
   };
 
