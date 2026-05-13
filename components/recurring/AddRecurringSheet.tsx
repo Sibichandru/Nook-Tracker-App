@@ -2,7 +2,6 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
@@ -15,7 +14,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -40,6 +45,7 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
     const { palette } = useTheme();
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
+    const { height: windowHeight } = useWindowDimensions();
     const addRecurring = useStore((s) => s.addRecurring);
     const runRecurringEngine = useStore((s) => s.runRecurringEngine);
     const categories = useStore((s) => s.categories);
@@ -105,7 +111,10 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
       [],
     );
 
-    const snapPoints = useMemo(() => ['85%', '95%'], []);
+    const maxSheetHeight = useMemo(
+      () => windowHeight * 0.95,
+      [windowHeight],
+    );
 
     const canSave = !!(
       categoryId &&
@@ -116,8 +125,8 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
     return (
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        index={0}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: palette.surface }}
         handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
@@ -126,11 +135,7 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
         <BottomSheetView style={styles.container}>
           <Text style={styles.title}>New recurring expense</Text>
 
-          <BottomSheetScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyContent}
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.body}>
             <View style={styles.field}>
               <Text style={styles.label}>AMOUNT</Text>
               <BottomSheetTextInput
@@ -216,7 +221,7 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
                 onChange={(v: Frequency) => setFrequency(v)}
               />
             </View>
-          </BottomSheetScrollView>
+          </View>
 
           <View style={styles.footer}>
             <Button
@@ -237,7 +242,6 @@ export const AddRecurringSheet = forwardRef<AddRecurringSheetRef>(
 function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
-      flex: 1,
       paddingHorizontal: 18,
       paddingTop: 6,
       paddingBottom: 18,
@@ -251,11 +255,8 @@ function makeStyles(palette: Palette) {
       paddingHorizontal: 4,
     },
     body: {
-      flex: 1,
-    },
-    bodyContent: {
       paddingTop: 4,
-      paddingBottom: 12,
+      paddingBottom: 4,
       gap: 16,
     },
     field: {
@@ -294,11 +295,13 @@ function makeStyles(palette: Palette) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-between',
-      gap: 8,
+      // No `gap` here — space-between handles horizontal distribution.
+      // Combining gap + space-between + percent widths makes 4 tiles
+      // overflow and wrap to 3 per row, doubling the section height.
       rowGap: 8,
     },
     categoryTile: {
-      width: '23.5%',
+      width: '23%',
       aspectRatio: 1,
       borderRadius: 12,
       alignItems: 'center',

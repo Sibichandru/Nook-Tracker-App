@@ -2,7 +2,6 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
@@ -14,7 +13,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
@@ -55,6 +54,7 @@ export const FilterSheet = forwardRef<FilterSheetRef>(
     const { palette } = useTheme();
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
+    const { height: windowHeight } = useWindowDimensions();
     const categories = useStore((s) => s.categories);
     const currentFilters = useStore((s) => s.filters);
     const setFilters = useStore((s) => s.setFilters);
@@ -96,7 +96,10 @@ export const FilterSheet = forwardRef<FilterSheetRef>(
       [],
     );
 
-    const snapPoints = useMemo(() => ['75%', '95%'], []);
+    const maxSheetHeight = useMemo(
+      () => windowHeight * 0.92,
+      [windowHeight],
+    );
 
     const toggleCategory = (id: string) => {
       setDraft((d) => ({
@@ -145,8 +148,8 @@ export const FilterSheet = forwardRef<FilterSheetRef>(
     return (
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        index={0}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: palette.surface }}
         handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
@@ -164,11 +167,7 @@ export const FilterSheet = forwardRef<FilterSheetRef>(
             />
           </View>
 
-          <BottomSheetScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyContent}
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.body}>
             <Section title="Period" palette={palette}>
               <SegmentedControl
                 options={PERIOD_OPTIONS}
@@ -239,7 +238,7 @@ export const FilterSheet = forwardRef<FilterSheetRef>(
                 style={styles.tagsInput}
               />
             </Section>
-          </BottomSheetScrollView>
+          </View>
 
           <View style={styles.footer}>
             <Button
@@ -286,7 +285,6 @@ function Section({
 function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
-      flex: 1,
       paddingHorizontal: 18,
       paddingTop: 6,
       paddingBottom: 18,
@@ -305,11 +303,8 @@ function makeStyles(palette: Palette) {
       letterSpacing: -0.4,
     },
     body: {
-      flex: 1,
-    },
-    bodyContent: {
       paddingTop: 8,
-      paddingBottom: 16,
+      paddingBottom: 4,
       gap: 18,
     },
     chipRow: {

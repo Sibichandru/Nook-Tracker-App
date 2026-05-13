@@ -2,7 +2,6 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
@@ -15,7 +14,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -66,6 +71,7 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
     const { palette } = useTheme();
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
+    const { height: windowHeight } = useWindowDimensions();
     const addCategory = useStore((s) => s.addCategory);
 
     const [name, setName] = useState('');
@@ -112,13 +118,13 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
       [],
     );
 
-    const snapPoints = useMemo(() => ['72%', '95%'], []);
+    const maxSheetHeight = useMemo(() => windowHeight * 0.92, [windowHeight]);
 
     return (
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        index={0}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: palette.surface }}
         handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
@@ -127,11 +133,7 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
         <BottomSheetView style={styles.container}>
           <Text style={styles.title}>New category</Text>
 
-          <BottomSheetScrollView
-            contentContainerStyle={styles.bodyContent}
-            showsVerticalScrollIndicator={false}
-            style={styles.body}
-          >
+          <View style={styles.body}>
             <View style={styles.preview}>
               <IconCircle name={icon} color={color} size={56} />
               <Text style={styles.previewName}>{name || 'New category'}</Text>
@@ -193,7 +195,7 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
                 ))}
               </View>
             </View>
-          </BottomSheetScrollView>
+          </View>
 
           <View style={styles.footer}>
             <Button
@@ -214,7 +216,6 @@ export const AddCategorySheet = forwardRef<AddCategorySheetRef>(
 function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
-      flex: 1,
       paddingHorizontal: 18,
       paddingTop: 6,
       paddingBottom: 18,
@@ -228,11 +229,8 @@ function makeStyles(palette: Palette) {
       paddingHorizontal: 4,
     },
     body: {
-      flex: 1,
-    },
-    bodyContent: {
       paddingTop: 4,
-      paddingBottom: 12,
+      paddingBottom: 4,
       gap: 18,
     },
     preview: {

@@ -1,5 +1,6 @@
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, type TextInput, View } from 'react-native';
 
 import { Chip } from '@/components/ui/Chip';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -66,7 +67,9 @@ export function StepAmount({
         </Text>
       </Pressable>
 
-      <TextInput
+      <BottomSheetTextInput
+        // @ts-expect-error -- gorhom's BottomSheetTextInput forwards the ref
+        // but doesn't propagate the TextInput type in its public API.
         ref={inputRef}
         keyboardType="decimal-pad"
         value={amount === 0 ? '' : String(amount)}

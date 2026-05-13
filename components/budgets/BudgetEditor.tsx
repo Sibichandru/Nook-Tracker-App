@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -43,6 +43,7 @@ export const BudgetEditor = forwardRef<BudgetEditorRef>(
     const { palette } = useTheme();
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
+    const { height: windowHeight } = useWindowDimensions();
     const addBudget = useStore((s) => s.addBudget);
     const updateBudget = useStore((s) => s.updateBudget);
     const deleteBudget = useStore((s) => s.deleteBudget);
@@ -110,7 +111,10 @@ export const BudgetEditor = forwardRef<BudgetEditorRef>(
       [],
     );
 
-    const snapPoints = useMemo(() => ['62%'], []);
+    const maxSheetHeight = useMemo(
+      () => windowHeight * 0.85,
+      [windowHeight],
+    );
 
     const title =
       target.type === 'overall'
@@ -120,8 +124,8 @@ export const BudgetEditor = forwardRef<BudgetEditorRef>(
     return (
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        index={0}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: palette.surface }}
         handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
@@ -179,7 +183,6 @@ export const BudgetEditor = forwardRef<BudgetEditorRef>(
 function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
-      flex: 1,
       paddingHorizontal: 18,
       paddingTop: 6,
       paddingBottom: 18,
@@ -215,7 +218,6 @@ function makeStyles(palette: Palette) {
     },
     footer: {
       gap: 8,
-      marginTop: 'auto',
     },
   });
 }

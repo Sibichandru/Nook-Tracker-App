@@ -2,7 +2,6 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -14,7 +13,14 @@ import {
   useReducer,
   useRef,
 } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { PIcon } from '@/components/ui/PIcon';
@@ -45,6 +51,7 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
     const { palette } = useTheme();
     const styles = makeStyles(palette);
     const sheetRef = useRef<BottomSheetModal>(null);
+    const { height: windowHeight } = useWindowDimensions();
     const [state, dispatch] = useReducer(sheetReducer, initialSheetState);
     const addExpense = useStore((s) => s.addExpense);
     const updateExpense = useStore((s) => s.updateExpense);
@@ -169,13 +176,17 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
       [],
     );
 
-    const snapPoints = useMemo(() => ['62%', '92%'], []);
+    // Sheet hugs its content via gorhom's dynamic sizing. Content height
+    // changes per step (small for Amount, larger for Details). maxDynamicContentSize
+    // caps very tall content (e.g. Details with keyboard open) so the sheet
+    // doesn't push past the screen — BottomSheetScrollView handles overflow.
+    const maxSheetHeight = useMemo(() => windowHeight * 0.92, [windowHeight]);
 
     return (
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        index={0}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: palette.surface }}
         handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
@@ -206,11 +217,7 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
             <StepDots total={3} current={state.step} />
           </View>
 
-          <BottomSheetScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyContent}
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.body}>
             {state.step === 0 ? (
               <StepAmount
                 amount={state.draft.amount}
@@ -238,7 +245,7 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
                 onDelete={state.mode === 'edit' ? handleDelete : undefined}
               />
             )}
-          </BottomSheetScrollView>
+          </View>
 
           <View style={styles.footer}>
             <Button
@@ -258,7 +265,9 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
 function makeStyles(palette: Palette) {
   return StyleSheet.create({
     container: {
-      flex: 1,
+      // No flex:1 — let height be driven by content so dynamic sizing
+      // measures it correctly. With flex:1 the View would expand to fill
+      // any parent, breaking the content-hugs-sheet behavior.
       paddingHorizontal: 18,
       paddingTop: 6,
       paddingBottom: 18,
@@ -292,12 +301,8 @@ function makeStyles(palette: Palette) {
       paddingVertical: 4,
     },
     body: {
-      flex: 1,
-    },
-    bodyContent: {
       paddingTop: 8,
-      paddingBottom: 16,
-      gap: 12,
+      paddingBottom: 8,
     },
     footer: {
       paddingTop: 4,

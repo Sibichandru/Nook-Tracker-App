@@ -86,6 +86,7 @@ echo "Inspect:  http://127.0.0.1:4040"
 echo "==========================================================="
 echo ""
 
+# Pass any extra args (--clear, --no-dev, etc.) through to expo start
 EXPO_PACKAGER_PROXY_URL="$URL" \
 REACT_NATIVE_PACKAGER_HOSTNAME="$HOST" \
-  npx expo start
+  npx expo start "$@"
