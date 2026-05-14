@@ -2,6 +2,12 @@ import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  type SharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { PIcon, type PIconName } from '@/components/ui/PIcon';
@@ -51,25 +57,18 @@ export function TxnRow({
   const sign = isIncome ? '+' : '';
 
   const renderRightActions = (
-    _progress: unknown,
-    _translation: unknown,
+    progress: SharedValue<number>,
+    _translation: SharedValue<number>,
     methods: SwipeableMethods,
   ) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Delete transaction"
+    <DeleteAction
+      progress={progress}
+      styles={styles}
       onPress={() => {
         methods.close();
         onDelete?.(expense);
       }}
-      style={({ pressed }) => [
-        styles.deleteAction,
-        pressed && styles.deleteActionPressed,
-      ]}
-    >
-      <PIcon name="close" size={18} color="#FFFFFF" strokeWidth={2.5} />
-      <Text style={styles.deleteActionLabel}>Delete</Text>
-    </Pressable>
+    />
   );
 
   const row = (
@@ -120,6 +119,63 @@ export function TxnRow({
     >
       {row}
     </ReanimatedSwipeable>
+  );
+}
+
+/**
+ * Inner component for the right-swipe action panel. Split out so we can use
+ * Reanimated hooks — they can't run inside the `renderRightActions` callback
+ * (which is invoked outside React's component context).
+ *
+ * Reveal choreography: the red strip fills the swept area immediately, but
+ * the icon + "Delete" label fade in only once the user has swept far enough
+ * that the label fits without overlapping the row's amount. Avoids the
+ * jarring moment where the label peeks out from behind the still-translating
+ * row content.
+ */
+function DeleteAction({
+  progress,
+  styles,
+  onPress,
+}: {
+  progress: SharedValue<number>;
+  styles: ReturnType<typeof makeStyles>;
+  onPress: () => void;
+}) {
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [0.55, 0.95],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+    transform: [
+      {
+        translateX: interpolate(
+          progress.value,
+          [0.55, 0.95],
+          [12, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Delete transaction"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.deleteAction,
+        pressed && styles.deleteActionPressed,
+      ]}
+    >
+      <Animated.View style={[styles.deleteContent, contentStyle]}>
+        <PIcon name="close" size={18} color="#FFFFFF" strokeWidth={2.5} />
+        <Text style={styles.deleteActionLabel}>Delete</Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -174,6 +230,13 @@ function makeStyles(palette: Palette, density: Density, isLast: boolean) {
     deleteAction: {
       width: DELETE_ACTION_WIDTH,
       backgroundColor: palette.negative,
+      alignItems: 'center',
+      justifyContent: 'center',
+      // overflow:hidden contains the inner content while it animates in,
+      // so any pre-fade frame can't leak out beyond the visible strip.
+      overflow: 'hidden',
+    },
+    deleteContent: {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 4,
