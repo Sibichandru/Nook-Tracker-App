@@ -139,13 +139,14 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        // PeriodBar (index 0) pins to the top while everything below scrolls
-        // under it. Keeps the period switcher always reachable.
-        stickyHeaderIndices={[0]}
+        // FilterChips (index 3) pins below the top bar so the category
+        // switcher stays reachable as transactions scroll beneath it.
+        // Index counts ScrollView children in order: PeriodBar (0),
+        // PendingTray (1, may render null), HeroCard wrapper (2),
+        // FilterChips wrapper (3).
+        stickyHeaderIndices={[3]}
       >
-        <View style={styles.stickyHeader}>
-          <PeriodBar />
-        </View>
+        <PeriodBar />
         <PendingTray pending={pending} onReview={handleReviewPending} />
         <Animated.View style={heroAnimStyle}>
           <HeroCard
@@ -155,7 +156,9 @@ export default function DashboardScreen() {
             expenses={expensesInPeriod}
           />
         </Animated.View>
-        <FilterChips filterSheetRef={filterSheetRef} />
+        <View style={styles.stickyFilters}>
+          <FilterChips filterSheetRef={filterSheetRef} />
+        </View>
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}
@@ -181,23 +184,18 @@ function makeStyles(palette: Palette) {
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: 16,
-      // Top padding lives on the sticky header so the sticky element itself
-      // covers the gap and content can scroll cleanly beneath it.
-      paddingTop: 0,
+      padding: 16,
       gap: 14,
       paddingBottom: 120,
     },
-    stickyHeader: {
+    stickyFilters: {
+      // Opaque background hides transactions scrolling underneath. The
+      // negative horizontal margin lets the background span the full
+      // dashboard width even though the contentContainer pads in by 16.
       backgroundColor: palette.bg,
-      paddingTop: 16,
-      paddingBottom: 8,
-      // Pull the wrapper outside the contentContainer's horizontal padding
-      // and re-add it internally, so the sticky background spans the full
-      // width and content scrolling underneath doesn't peek through the
-      // 16px gutter on either side.
       marginHorizontal: -16,
       paddingHorizontal: 16,
+      paddingVertical: 4,
     },
     tailSpacer: {
       height: 40,
