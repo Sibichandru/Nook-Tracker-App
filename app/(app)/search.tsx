@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,6 +38,7 @@ export default function SearchScreen() {
 
   const categories = useStore((s) => s.categories);
   const density = useStore((s) => s.settings.density);
+  const deleteExpense = useStore((s) => s.deleteExpense);
 
   const categoriesById = useMemo<Map<string, Category>>(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -81,6 +83,22 @@ export default function SearchScreen() {
 
   const handleTxnPress = (expense: Expense) => {
     sheetRef.current?.openEdit(expense);
+  };
+
+  const handleTxnDelete = (expense: Expense) => {
+    Alert.alert('Delete this transaction?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteExpense(expense.id);
+          // Drop it from local results too so the row vanishes from the
+          // list without re-running the search.
+          setResults((rs) => rs.filter((r) => r.id !== expense.id));
+        },
+      },
+    ]);
   };
 
   const trimmed = query.trim();
@@ -183,6 +201,7 @@ export default function SearchScreen() {
                       density={density}
                       isLast={i === rows.length - 1}
                       onPress={handleTxnPress}
+                      onDelete={handleTxnDelete}
                     />
                   ))}
                 </Card>

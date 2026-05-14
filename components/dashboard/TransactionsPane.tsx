@@ -14,11 +14,14 @@ type TransactionsPaneProps = {
   /** Expenses already filtered for the active period + filters by the parent */
   expenses: Expense[];
   onPressExpense?: (expense: Expense) => void;
+  /** Wires up swipe-to-delete on each row. Parent handles confirmation. */
+  onDeleteExpense?: (expense: Expense) => void;
 };
 
 export function TransactionsPane({
   expenses,
   onPressExpense,
+  onDeleteExpense,
 }: TransactionsPaneProps) {
   const { palette } = useTheme();
   const categories = useStore((s) => s.categories);
@@ -79,6 +82,7 @@ export function TransactionsPane({
                 density={density}
                 isLast={i === rows.length - 1}
                 onPress={onPressExpense}
+                onDelete={onDeleteExpense}
               />
             ))}
           </Card>

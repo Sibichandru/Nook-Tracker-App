@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -37,6 +37,7 @@ export default function DashboardScreen() {
   const styles = makeStyles(palette);
 
   const expenses = useStore((s) => s.expenses);
+  const deleteExpense = useStore((s) => s.deleteExpense);
   const activePeriod = useStore((s) => s.ui.activePeriod);
   const activeCategoryFilter = useStore((s) => s.ui.activeCategoryFilter);
 
@@ -130,6 +131,18 @@ export default function DashboardScreen() {
     sheetRef.current?.openEdit(expense);
   const handleReviewPending = (expense: Expense) =>
     sheetRef.current?.openReview(expense);
+  const handleTxnDelete = (expense: Expense) => {
+    Alert.alert('Delete this transaction?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void deleteExpense(expense.id);
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -162,6 +175,7 @@ export default function DashboardScreen() {
         <TransactionsPane
           expenses={expensesInPeriod}
           onPressExpense={handleTxnPress}
+          onDeleteExpense={handleTxnDelete}
         />
         <View style={styles.tailSpacer} />
       </Animated.ScrollView>

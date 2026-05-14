@@ -1,3 +1,6 @@
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -14,12 +17,20 @@ const PAYMENT_ICON: Record<PaymentMethod, PIconName> = {
   bank: 'card',
 };
 
+/** Width of the revealed delete action panel. */
+const DELETE_ACTION_WIDTH = 84;
+
 type TxnRowProps = {
   expense: Expense;
   category: Category | undefined;
   density: Density;
   isLast?: boolean;
   onPress?: (expense: Expense) => void;
+  /**
+   * If provided, swipe-left reveals a delete affordance whose tap calls this
+   * handler. Parent is responsible for confirmation + the actual delete.
+   */
+  onDelete?: (expense: Expense) => void;
 };
 
 export function TxnRow({
@@ -28,6 +39,7 @@ export function TxnRow({
   density,
   isLast = false,
   onPress,
+  onDelete,
 }: TxnRowProps) {
   const { palette } = useTheme();
   const styles = makeStyles(palette, density, isLast);
@@ -38,7 +50,29 @@ export function TxnRow({
   const amountColor = isIncome ? palette.positive : palette.ink;
   const sign = isIncome ? '+' : '';
 
-  return (
+  const renderRightActions = (
+    _progress: unknown,
+    _translation: unknown,
+    methods: SwipeableMethods,
+  ) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Delete transaction"
+      onPress={() => {
+        methods.close();
+        onDelete?.(expense);
+      }}
+      style={({ pressed }) => [
+        styles.deleteAction,
+        pressed && styles.deleteActionPressed,
+      ]}
+    >
+      <PIcon name="close" size={18} color="#FFFFFF" strokeWidth={2.5} />
+      <Text style={styles.deleteActionLabel}>Delete</Text>
+    </Pressable>
+  );
+
+  const row = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${category?.name ?? 'Uncategorized'}, ${formatINR(expense.amount)}, ${expense.merchant ?? ''}`}
@@ -72,6 +106,20 @@ export function TxnRow({
         {formatINR(expense.amount)}
       </Text>
     </Pressable>
+  );
+
+  if (!onDelete) return row;
+
+  return (
+    <ReanimatedSwipeable
+      renderRightActions={renderRightActions}
+      rightThreshold={DELETE_ACTION_WIDTH / 2}
+      overshootRight={false}
+      friction={2}
+      containerStyle={styles.swipeContainer}
+    >
+      {row}
+    </ReanimatedSwipeable>
   );
 }
 
@@ -117,6 +165,26 @@ function makeStyles(palette: Palette, density: Density, isLast: boolean) {
       fontFamily: 'Inter_600SemiBold',
       fontSize: compact ? 14 : 15,
       fontVariant: ['tabular-nums'],
+    },
+    swipeContainer: {
+      // No border here — the inner row carries it. Adding one would
+      // double-stack the divider when the row sits at rest.
+      backgroundColor: palette.surface,
+    },
+    deleteAction: {
+      width: DELETE_ACTION_WIDTH,
+      backgroundColor: palette.negative,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    deleteActionPressed: {
+      opacity: 0.85,
+    },
+    deleteActionLabel: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 12,
+      color: '#FFFFFF',
     },
   });
 }
