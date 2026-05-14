@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "check": "tsc --noEmit && expo lint",
-    "tunnel": "./scripts/dev-tunnel.sh"
+    "tunnel": "./scripts/dev-tunnel.sh",
+    "smoke:parser": "node --experimental-strip-types lib/notifications/__smoke__/parserSmoke.ts"
   },
   "dependencies": {
     "@expo-google-fonts/dm-serif-display": "^0.4.2",
