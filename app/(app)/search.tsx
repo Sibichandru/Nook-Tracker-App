@@ -62,7 +62,11 @@ export default function SearchScreen() {
     const timer = setTimeout(async () => {
       try {
         const rows = await ExpensesRepo.search(trimmed);
-        if (!cancelled) setResults(rows);
+        // Pending detections are reviewed from the dashboard's pending tray,
+        // not surfaced here. Iter 35 adds an opt-in toggle for rejected rows.
+        if (!cancelled) {
+          setResults(rows.filter((r) => r.status === 'confirmed'));
+        }
       } finally {
         if (!cancelled) setSearching(false);
       }

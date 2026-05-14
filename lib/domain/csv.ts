@@ -19,6 +19,7 @@ const HEADER = [
   'note',
   'tags',
   'source',
+  'status',
 ];
 
 function csvEscape(value: string | null): string {
@@ -48,6 +49,7 @@ export function expensesToCSV(
       csvEscape(e.note),
       csvEscape(e.tags.join('|')),
       e.source,
+      e.status,
     ].join(',');
   });
   return [headerLine, ...lines].join('\n');

@@ -151,6 +151,7 @@ async function materializeRecurring(
         date,
         time: '00:00',
         source: 'recurring',
+        status: 'confirmed',
         recurringId: rule.id,
       });
       newExpenses.push(e);

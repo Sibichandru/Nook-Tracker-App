@@ -3,7 +3,19 @@
  * all consume these. Adding a field here is the first step of any data change.
  */
 
-export type Source = 'manual' | 'sms' | 'recurring';
+export type Source = 'manual' | 'sms' | 'recurring' | 'notification';
+
+/**
+ * Lifecycle status for an expense row.
+ *
+ *   - `confirmed`: visible everywhere; counts toward aggregates.
+ *   - `pending`:   detected from a notification, awaiting user review.
+ *                  Surfaces in the dashboard's pending tray only; excluded
+ *                  from totals/charts until confirmed.
+ *   - `rejected`:  user dismissed the detection; soft-deleted. Hidden by
+ *                  default but recoverable from the search screen.
+ */
+export type ExpenseStatus = 'confirmed' | 'pending' | 'rejected';
 
 export type Period = 'day' | 'week' | 'month' | 'year' | 'custom';
 
@@ -33,6 +45,7 @@ export interface Expense {
   /** Local time — `HH:MM` */
   time: string;
   source: Source;
+  status: ExpenseStatus;
   recurringId: string | null;
   createdAt: string;
   updatedAt: string;

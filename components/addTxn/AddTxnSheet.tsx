@@ -98,6 +98,7 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
         date: state.draft.date,
         time: state.draft.time,
         source: 'manual' as const,
+        status: 'confirmed' as const,
         recurringId: null,
       };
 

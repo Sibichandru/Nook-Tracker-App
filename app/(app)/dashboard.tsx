@@ -51,9 +51,12 @@ export default function DashboardScreen() {
     [activePeriod, now.toDateString()],
   );
 
+  // Pending rows live in the pending tray (iter 32). Hero card, transactions
+  // pane, and trend math all count confirmed spend only.
   const expensesInPeriod = useMemo(
     () =>
       expenses.filter((e) => {
+        if (e.status !== 'confirmed') return false;
         if (e.date < start || e.date > end) return false;
         if (activeCategoryFilter && e.categoryId !== activeCategoryFilter) {
           return false;
@@ -76,6 +79,7 @@ export default function DashboardScreen() {
       expenses
         .filter(
           (e) =>
+            e.status === 'confirmed' &&
             e.type === 'expense' &&
             e.date >= prev.start &&
             e.date <= prev.end,

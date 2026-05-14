@@ -46,12 +46,19 @@ export default function ReportsScreen() {
   const start = isoDaysAgo(days - 1);
   const end = isoToday();
 
+  // Reports aggregate confirmed spend only — pending detections shouldn't
+  // skew totals, averages, or category breakdowns.
+  const confirmedExpenses = useMemo(
+    () => expenses.filter((e) => e.status === 'confirmed'),
+    [expenses],
+  );
+
   const inRange = useMemo(
     () =>
-      expenses.filter(
+      confirmedExpenses.filter(
         (e) => e.type === 'expense' && e.date >= start && e.date <= end,
       ),
-    [expenses, start, end],
+    [confirmedExpenses, start, end],
   );
 
   const total = useMemo(
@@ -67,8 +74,8 @@ export default function ReportsScreen() {
   );
 
   const monthlyData = useMemo(
-    () => monthlyTotalsAsDaily(expenses, 6),
-    [expenses],
+    () => monthlyTotalsAsDaily(confirmedExpenses, 6),
+    [confirmedExpenses],
   );
 
   return (

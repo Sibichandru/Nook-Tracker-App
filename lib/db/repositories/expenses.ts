@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 
 import type {
   Expense,
+  ExpenseStatus,
   Filters,
   PaymentMethod,
   Source,
@@ -22,6 +23,7 @@ type ExpenseRow = {
   date: string;
   time: string;
   source: string;
+  status: string;
   recurring_id: string | null;
   created_at: string;
   updated_at: string;
@@ -39,6 +41,7 @@ const rowToExpense = (r: ExpenseRow): Expense => ({
   date: r.date,
   time: r.time,
   source: r.source as Source,
+  status: (r.status as ExpenseStatus) ?? 'confirmed',
   recurringId: r.recurring_id,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -72,8 +75,8 @@ export const ExpensesRepo = {
     await db.runAsync(
       `INSERT INTO expenses
          (id, amount, type, category_id, merchant, payment_method, note,
-          tags, date, time, source, recurring_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          tags, date, time, source, status, recurring_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         expense.id,
         expense.amount,
@@ -86,6 +89,7 @@ export const ExpensesRepo = {
         expense.date,
         expense.time,
         expense.source,
+        expense.status,
         expense.recurringId,
         expense.createdAt,
         expense.updatedAt,
@@ -126,6 +130,7 @@ export const ExpensesRepo = {
     if (patch.date !== undefined) set('date', patch.date);
     if (patch.time !== undefined) set('time', patch.time);
     if (patch.source !== undefined) set('source', patch.source);
+    if (patch.status !== undefined) set('status', patch.status);
     if (patch.recurringId !== undefined) set('recurring_id', patch.recurringId);
 
     params.push(id);
@@ -191,7 +196,8 @@ export const ExpensesRepo = {
 
   /**
    * Returns total expense amount per category between [start, end] inclusive.
-   * Income rows are excluded.
+   * Income rows are excluded. Pending and rejected rows are excluded —
+   * aggregates count only confirmed spend.
    */
   async sumByCategory(
     start: string,
@@ -201,7 +207,10 @@ export const ExpensesRepo = {
     const rows = await db.getAllAsync<{ category_id: string; total: number }>(
       `SELECT category_id, SUM(amount) as total
          FROM expenses
-        WHERE type = 'expense' AND date >= ? AND date <= ?
+        WHERE type = 'expense'
+          AND status = 'confirmed'
+          AND date >= ?
+          AND date <= ?
         GROUP BY category_id`,
       [start, end],
     );

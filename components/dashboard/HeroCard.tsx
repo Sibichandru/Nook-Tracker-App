@@ -34,9 +34,15 @@ export function HeroCard({ label, total, trendPct, expenses }: HeroCardProps) {
 
   const activeChart = useStore((s) => s.ui.activeChart);
   const setActiveChart = useStore((s) => s.setActiveChart);
-  const allExpenses = useStore((s) => s.expenses);
+  const allExpensesRaw = useStore((s) => s.expenses);
   const categories = useStore((s) => s.categories);
   const budgets = useStore((s) => s.budgets);
+
+  // Pending detections live in the tray and don't count toward charts.
+  const allExpenses = useMemo(
+    () => allExpensesRaw.filter((e) => e.status === 'confirmed'),
+    [allExpensesRaw],
+  );
 
   const categoriesById = useMemo<Map<string, Category>>(
     () => new Map(categories.map((c) => [c.id, c])),

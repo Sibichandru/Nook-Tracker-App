@@ -41,7 +41,11 @@ export default function SettingsScreen() {
   const handleExport = async () => {
     try {
       const categoriesById = new Map(categories.map((c) => [c.id, c]));
-      await exportAndShareExpenses(expenses, categoriesById);
+      // Default export = confirmed rows only. Pending detections aren't user
+      // expenses yet; rejected rows are soft-deleted noise. Iter 35 will add
+      // toggles for including either.
+      const exportable = expenses.filter((e) => e.status === 'confirmed');
+      await exportAndShareExpenses(exportable, categoriesById);
     } catch (e) {
       Alert.alert(
         'Could not export',
