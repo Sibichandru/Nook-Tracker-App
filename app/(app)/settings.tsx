@@ -226,6 +226,67 @@ export default function SettingsScreen() {
           </Section>
         ) : null}
 
+        {FLAGS.enableDevRoutes ? (
+          <Section title="Developer" palette={palette}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open pending tray sandbox"
+              onPress={() => router.push('/dev/pending' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Pending tray sandbox</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open primitives sandbox"
+              onPress={() => router.push('/dev/primitives' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Primitives sandbox</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open icons sandbox"
+              onPress={() => router.push('/dev/icons' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Icons sandbox</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open charts sandbox"
+              onPress={() => router.push('/dev/charts' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Charts sandbox</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+          </Section>
+        ) : null}
+
         {user ? (
           <View style={styles.signOutWrap}>
             <Button
