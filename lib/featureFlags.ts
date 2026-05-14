@@ -19,6 +19,11 @@ export const FLAGS = {
   // `enableDevRoutes` gates the /dev/* sandbox routes used to visually verify
   // primitives and icons. True in development builds, false in production.
   enableDevRoutes: __DEV__,
+  // The pending-tray dev sandbox is only useful while we don't have real
+  // notification capture. Once the native listener (iter 33+) lands, real
+  // pending rows come from JSONL drains — flip this back to __DEV__ if you
+  // need to inspect the tray with synthetic data again.
+  enableDevPending: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;

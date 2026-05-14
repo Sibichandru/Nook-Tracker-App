@@ -1,6 +1,8 @@
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { FLAGS } from '@/lib/featureFlags';
 import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
 
@@ -10,9 +12,19 @@ import { type Palette, useTheme } from '@/lib/theme';
  * notification capture. The seeded rows mimic what the parser would produce
  * from PhonePe, HDFC, and an unknown-merchant ICICI debit.
  *
- * Replace via Settings → reset, or via the "Clear pending" button below.
+ * Gated behind `FLAGS.enableDevPending` — kept around because the synthetic
+ * seeder is still handy for tray visual tweaks, but disabled by default now
+ * that real notification capture is online (iter 33+). The guard wraps the
+ * real screen so we never reach hooks when the route is disabled.
  */
 export default function PendingDevScreen() {
+  if (!FLAGS.enableDevPending) {
+    return <Redirect href="/" />;
+  }
+  return <PendingDevScreenInner />;
+}
+
+function PendingDevScreenInner() {
   const { palette } = useTheme();
   const styles = makeStyles(palette);
   const expenses = useStore((s) => s.expenses);

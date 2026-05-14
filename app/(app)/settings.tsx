@@ -228,20 +228,22 @@ export default function SettingsScreen() {
 
         {FLAGS.enableDevRoutes ? (
           <Section title="Developer" palette={palette}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open pending tray sandbox"
-              onPress={() => router.push('/dev/pending' as never)}
-              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
-            >
-              <Text style={styles.navLabel}>Pending tray sandbox</Text>
-              <PIcon
-                name="chevron"
-                size={16}
-                color={palette.inkSoft}
-                strokeWidth={2}
-              />
-            </Pressable>
+            {FLAGS.enableDevPending ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open pending tray sandbox"
+                onPress={() => router.push('/dev/pending' as never)}
+                style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.navLabel}>Pending tray sandbox</Text>
+                <PIcon
+                  name="chevron"
+                  size={16}
+                  color={palette.inkSoft}
+                  strokeWidth={2}
+                />
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Open primitives sandbox"
