@@ -183,6 +183,12 @@ function makeStyles(palette: Palette, density: Density, isLast: boolean) {
   const compact = density === 'compact';
   return StyleSheet.create({
     row: {
+      // Solid background is critical when wrapped in ReanimatedSwipeable —
+      // the right action panel sits behind the row and bleeds through any
+      // transparent pixel. Without this, the red strip appears under the
+      // amount text the instant swipe begins, instead of growing with the
+      // gesture as the row translates over it.
+      backgroundColor: palette.surface,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
