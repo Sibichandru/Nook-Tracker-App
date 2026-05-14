@@ -4,12 +4,14 @@ import { useStore } from '@/lib/store';
 import { type Palette, useTheme } from '@/lib/theme';
 import type { Period } from '@/lib/types';
 
+// 'custom' remains a valid Period for filters and the reports range picker,
+// but the dashboard period switcher is intentionally limited to the four
+// canonical windows.
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
   { value: 'year', label: 'Year' },
-  { value: 'custom', label: 'Custom' },
 ];
 
 export function PeriodBar() {

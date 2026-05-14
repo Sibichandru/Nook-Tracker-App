@@ -139,8 +139,13 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
+        // PeriodBar (index 0) pins to the top while everything below scrolls
+        // under it. Keeps the period switcher always reachable.
+        stickyHeaderIndices={[0]}
       >
-        <PeriodBar />
+        <View style={styles.stickyHeader}>
+          <PeriodBar />
+        </View>
         <PendingTray pending={pending} onReview={handleReviewPending} />
         <Animated.View style={heroAnimStyle}>
           <HeroCard
@@ -176,9 +181,23 @@ function makeStyles(palette: Palette) {
       flex: 1,
     },
     scrollContent: {
-      padding: 16,
+      paddingHorizontal: 16,
+      // Top padding lives on the sticky header so the sticky element itself
+      // covers the gap and content can scroll cleanly beneath it.
+      paddingTop: 0,
       gap: 14,
       paddingBottom: 120,
+    },
+    stickyHeader: {
+      backgroundColor: palette.bg,
+      paddingTop: 16,
+      paddingBottom: 8,
+      // Pull the wrapper outside the contentContainer's horizontal padding
+      // and re-add it internally, so the sticky background spans the full
+      // width and content scrolling underneath doesn't peek through the
+      // 16px gutter on either side.
+      marginHorizontal: -16,
+      paddingHorizontal: 16,
     },
     tailSpacer: {
       height: 40,
