@@ -61,6 +61,17 @@ type StoreActions = {
     patch: Partial<Omit<Expense, 'id' | 'createdAt'>>,
   ) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  /**
+   * Flip a pending detection to confirmed. Optional patch lets the review
+   * sheet apply field edits in the same write (e.g. picking a real category
+   * to replace 'uncategorized').
+   */
+  confirmExpense: (
+    id: string,
+    patch?: Partial<Omit<Expense, 'id' | 'createdAt'>>,
+  ) => Promise<void>;
+  /** Soft-delete a pending detection; recoverable via the search screen. */
+  rejectExpense: (id: string) => Promise<void>;
 
   addCategory: (
     input: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>,
@@ -248,6 +259,28 @@ export const useStore = create<StoreState & StoreActions>((set, get) => ({
   deleteExpense: async (id) => {
     await ExpensesRepo.delete(id);
     set((s) => ({ expenses: s.expenses.filter((e) => e.id !== id) }));
+  },
+  confirmExpense: async (id, patch) => {
+    const merged: Partial<Omit<Expense, 'id' | 'createdAt'>> = {
+      ...patch,
+      status: 'confirmed',
+    };
+    await ExpensesRepo.update(id, merged);
+    const now = new Date().toISOString();
+    set((s) => ({
+      expenses: s.expenses.map((e) =>
+        e.id === id ? { ...e, ...merged, updatedAt: now } : e,
+      ),
+    }));
+  },
+  rejectExpense: async (id) => {
+    await ExpensesRepo.update(id, { status: 'rejected' });
+    const now = new Date().toISOString();
+    set((s) => ({
+      expenses: s.expenses.map((e) =>
+        e.id === id ? { ...e, status: 'rejected', updatedAt: now } : e,
+      ),
+    }));
   },
 
   addCategory: async (input) => {

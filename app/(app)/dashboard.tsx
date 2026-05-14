@@ -17,6 +17,7 @@ import { DashTopBar } from '@/components/dashboard/DashTopBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { FilterSheet, type FilterSheetRef } from '@/components/dashboard/FilterSheet';
 import { HeroCard } from '@/components/dashboard/HeroCard';
+import { PendingTray } from '@/components/dashboard/PendingTray';
 import { PeriodBar } from '@/components/dashboard/PeriodBar';
 import { TransactionsPane } from '@/components/dashboard/TransactionsPane';
 import { FAB } from '@/components/ui/FAB';
@@ -117,11 +118,18 @@ export default function DashboardScreen() {
     return { opacity, transform: [{ translateY }] };
   });
 
+  const pending = useMemo(
+    () => expenses.filter((e) => e.status === 'pending'),
+    [expenses],
+  );
+
   const sheetRef = useRef<AddTxnSheetRef>(null);
   const filterSheetRef = useRef<FilterSheetRef>(null);
   const handleAddExpense = () => sheetRef.current?.openCreate();
   const handleTxnPress = (expense: Expense) =>
     sheetRef.current?.openEdit(expense);
+  const handleReviewPending = (expense: Expense) =>
+    sheetRef.current?.openReview(expense);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -133,6 +141,7 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <PeriodBar />
+        <PendingTray pending={pending} onReview={handleReviewPending} />
         <Animated.View style={heroAnimStyle}>
           <HeroCard
             label={label}

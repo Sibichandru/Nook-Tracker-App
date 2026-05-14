@@ -14,8 +14,10 @@ import type { PaymentMethod } from '@/lib/types';
 type StepDetailsProps = {
   draft: TransactionDraft;
   onPatch: (patch: Partial<TransactionDraft>) => void;
-  /** Set in edit mode; when provided, renders a delete button */
+  /** Set in edit/review mode; when provided, renders a destructive button */
   onDelete?: () => void;
+  /** Label for the destructive button (defaults to "Delete transaction") */
+  deleteLabel?: string;
 };
 
 const formatDateTime = (date: string, time: string): string => {
@@ -35,7 +37,12 @@ const formatDateTime = (date: string, time: string): string => {
   return `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${timeStr}`;
 };
 
-export function StepDetails({ draft, onPatch, onDelete }: StepDetailsProps) {
+export function StepDetails({
+  draft,
+  onPatch,
+  onDelete,
+  deleteLabel = 'Delete transaction',
+}: StepDetailsProps) {
   const { palette } = useTheme();
   const styles = makeStyles(palette);
   const [tagInput, setTagInput] = useState(draft.tags.join(', '));
@@ -133,14 +140,14 @@ export function StepDetails({ draft, onPatch, onDelete }: StepDetailsProps) {
       {onDelete ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Delete transaction"
+          accessibilityLabel={deleteLabel}
           onPress={onDelete}
           style={({ pressed }) => [
             styles.deleteButton,
             pressed && styles.deletePressed,
           ]}
         >
-          <Text style={styles.deleteText}>Delete transaction</Text>
+          <Text style={styles.deleteText}>{deleteLabel}</Text>
         </Pressable>
       ) : null}
 

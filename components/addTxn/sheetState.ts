@@ -6,12 +6,20 @@ import {
 } from '@/lib/domain/transactionDraft';
 import type { Expense } from '@/lib/types';
 
-export type SheetMode = 'create' | 'edit';
+/**
+ * Sheet modes:
+ *   - `create`: fresh draft, manual entry from the FAB.
+ *   - `edit`:   editing an existing confirmed expense.
+ *   - `review`: confirming/editing a `status: 'pending'` row that was
+ *               auto-detected from a notification. Save flips status to
+ *               'confirmed'; the reject button replaces delete.
+ */
+export type SheetMode = 'create' | 'edit' | 'review';
 export type SheetStep = 0 | 1 | 2;
 
 export type SheetState = {
   mode: SheetMode;
-  /** Set in edit mode so we know which row to update on save */
+  /** Set in edit/review mode so we know which row to update on save */
   initial: Expense | null;
   draft: TransactionDraft;
   step: SheetStep;
@@ -21,6 +29,7 @@ export type SheetState = {
 export type SheetAction =
   | { type: 'open-create' }
   | { type: 'open-edit'; expense: Expense }
+  | { type: 'open-review'; expense: Expense }
   | { type: 'next' }
   | { type: 'prev' }
   | { type: 'go-to'; step: SheetStep }
@@ -55,6 +64,16 @@ export function sheetReducer(
         initial: action.expense,
         draft: fromExpense(action.expense),
         step: 0,
+        errors: {},
+      };
+    case 'open-review':
+      return {
+        mode: 'review',
+        initial: action.expense,
+        draft: fromExpense(action.expense),
+        // Land on Category step for parsed rows so the user has to confirm
+        // an uncategorized detection before they can hit Confirm.
+        step: action.expense.categoryId === 'uncategorized' ? 1 : 2,
         errors: {},
       };
     case 'next':

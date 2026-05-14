@@ -41,10 +41,18 @@ import { initialSheetState, sheetReducer, type SheetStep } from './sheetState';
 export type AddTxnSheetRef = {
   openCreate: () => void;
   openEdit: (expense: Expense) => void;
+  /** Open a pending detection for one-shot confirm/reject. */
+  openReview: (expense: Expense) => void;
   close: () => void;
 };
 
 const STEP_TITLES = ['Amount', 'Category', 'Details'];
+
+function primaryLabel(mode: 'create' | 'edit' | 'review', step: number): string {
+  if (step < 2) return 'Continue';
+  if (mode === 'review') return 'Confirm';
+  return 'Save transaction';
+}
 
 export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
   function AddTxnSheet(_props, ref) {
@@ -56,6 +64,7 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
     const addExpense = useStore((s) => s.addExpense);
     const updateExpense = useStore((s) => s.updateExpense);
     const deleteExpense = useStore((s) => s.deleteExpense);
+    const rejectExpense = useStore((s) => s.rejectExpense);
 
     useImperativeHandle(
       ref,
@@ -66,6 +75,10 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
         },
         openEdit: (expense) => {
           dispatch({ type: 'open-edit', expense });
+          sheetRef.current?.present();
+        },
+        openReview: (expense) => {
+          dispatch({ type: 'open-review', expense });
           sheetRef.current?.present();
         },
         close: () => sheetRef.current?.dismiss(),
@@ -103,7 +116,12 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
       };
 
       try {
-        if (state.mode === 'edit' && state.initial) {
+        // Edit and review both flow through updateExpense — review just
+        // happens to flip status: 'pending' → 'confirmed' via the payload.
+        if (
+          (state.mode === 'edit' || state.mode === 'review') &&
+          state.initial
+        ) {
           await updateExpense(state.initial.id, payload);
         } else {
           await addExpense(payload);
@@ -136,6 +154,27 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
             onPress: async () => {
               if (state.initial) {
                 await deleteExpense(state.initial.id);
+              }
+              handleClose();
+            },
+          },
+        ],
+      );
+    };
+
+    const handleReject = () => {
+      if (state.mode !== 'review' || !state.initial) return;
+      Alert.alert(
+        'Reject this detection?',
+        'It will be hidden from your timeline. You can restore it later from search.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reject',
+            style: 'destructive',
+            onPress: async () => {
+              if (state.initial) {
+                await rejectExpense(state.initial.id);
               }
               handleClose();
             },
@@ -243,17 +282,33 @@ export const AddTxnSheet = forwardRef<AddTxnSheetRef>(
               <StepDetails
                 draft={state.draft}
                 onPatch={(patch) => dispatch({ type: 'patch', patch })}
-                onDelete={state.mode === 'edit' ? handleDelete : undefined}
+                onDelete={
+                  state.mode === 'edit'
+                    ? handleDelete
+                    : state.mode === 'review'
+                      ? handleReject
+                      : undefined
+                }
+                deleteLabel={
+                  state.mode === 'review'
+                    ? 'Reject detection'
+                    : 'Delete transaction'
+                }
               />
             )}
           </View>
 
           <View style={styles.footer}>
             <Button
-              label={state.step < 2 ? 'Continue' : 'Save transaction'}
+              label={primaryLabel(state.mode, state.step)}
               variant="primary"
               icon={state.step < 2 ? 'chevron' : 'check'}
               onPress={handlePrimary}
+              disabled={
+                state.step === 2 &&
+                state.mode === 'review' &&
+                state.draft.categoryId === 'uncategorized'
+              }
               fullWidth
             />
           </View>
