@@ -1,0 +1,12 @@
+{
+  "name": "nook-notification-listener",
+  "version": "1.0.0",
+  "description": "Android NotificationListenerService bridge for Nook's auto-import. Captures notifications from allowlisted banking/payment apps and writes them as JSONL to the app's files directory; the JS side drains the queue on foreground.",
+  "main": "src/index.ts",
+  "private": true,
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}
