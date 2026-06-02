@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { type ReactNode } from 'react';
 import {
@@ -10,16 +11,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NOTIFICATION_SETUP_DISMISS_KEY } from '@/components/dashboard/NotificationAccessSetup';
 import { AccentSwatchRow } from '@/components/settings/AccentSwatchRow';
 import { CategoryManager } from '@/components/settings/CategoryManager';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PIcon } from '@/components/ui/PIcon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Toggle } from '@/components/ui/Toggle';
 import { signOutAll } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { exportAndShareExpenses } from '@/lib/export';
 import { FLAGS } from '@/lib/featureFlags';
+import { pickAndParseCSV } from '@/lib/import';
 import { useStore } from '@/lib/store';
 import {
   type AccentKey,
@@ -38,6 +42,8 @@ export default function SettingsScreen() {
   const expenses = useStore((s) => s.expenses);
   const categories = useStore((s) => s.categories);
 
+  const addExpense = useStore((s) => s.addExpense);
+
   const handleExport = async () => {
     try {
       const categoriesById = new Map(categories.map((c) => [c.id, c]));
@@ -52,6 +58,63 @@ export default function SettingsScreen() {
         e instanceof Error ? e.message : 'Unknown error',
       );
     }
+  };
+
+  const handleImport = async () => {
+    let picked;
+    try {
+      picked = await pickAndParseCSV(categories);
+    } catch (e) {
+      Alert.alert(
+        'Could not read file',
+        e instanceof Error ? e.message : 'Unknown error',
+      );
+      return;
+    }
+    if (picked.kind === 'cancelled') return;
+    const { result, filename } = picked;
+    if (result.valid.length === 0) {
+      Alert.alert(
+        'Nothing to import',
+        `No usable rows found in ${filename}. ${result.invalid.length} row(s) were rejected.`,
+      );
+      return;
+    }
+    const sampleErrors = result.invalid
+      .slice(0, 3)
+      .map((e) => `  · row ${e.row}: ${e.reason}`)
+      .join('\n');
+    const errSummary = result.invalid.length
+      ? `\n\nSkipping ${result.invalid.length} invalid row(s):\n${sampleErrors}${
+          result.invalid.length > 3 ? '\n  · …' : ''
+        }`
+      : '';
+    Alert.alert(
+      'Import preview',
+      `Found ${result.valid.length} transaction(s) in ${filename}.${errSummary}\n\nImport them now? Existing rows are kept; imported rows get fresh IDs.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Import',
+          onPress: async () => {
+            try {
+              for (const row of result.valid) {
+                await addExpense(row);
+              }
+              Alert.alert(
+                'Imported',
+                `${result.valid.length} transaction(s) added.`,
+              );
+            } catch (e) {
+              Alert.alert(
+                'Import failed',
+                e instanceof Error ? e.message : 'Unknown error',
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleSignOut = () => {
@@ -82,8 +145,13 @@ export default function SettingsScreen() {
     void updateSettings({ density: d });
   };
 
-  const handleSetDateFormat = (df: string) => {
-    void updateSettings({ dateFormat: df });
+  const handleToggleNotificationCapture = (next: boolean) => {
+    void updateSettings({ notificationCaptureEnabled: next });
+    // Clear the dashboard banner dismissal when the user re-enables capture,
+    // so the setup banner reappears to guide them through permission grant.
+    if (next) {
+      AsyncStorage.removeItem(NOTIFICATION_SETUP_DISMISS_KEY).catch(() => {});
+    }
   };
 
   return (
@@ -150,20 +218,27 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="Format" palette={palette}>
-          <Row label="Date format" palette={palette}>
-            <SegmentedControl
-              options={[
-                { value: 'DD MMM YYYY', label: 'DD MMM' },
-                { value: 'MMM DD YYYY', label: 'MMM DD' },
-                { value: 'YYYY-MM-DD', label: 'ISO' },
-              ]}
-              value={settings.dateFormat}
-              onChange={handleSetDateFormat}
-            />
-          </Row>
           <Row label="Currency" palette={palette}>
             <Text style={styles.currency}>₹ Indian Rupee</Text>
           </Row>
+        </Section>
+
+        <Section title="Notifications" palette={palette}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLabelWrap}>
+              <Text style={styles.toggleLabel}>Capture from notifications</Text>
+              <Text style={styles.toggleHint}>
+                Auto-log expenses from bank and UPI notifications. You&rsquo;ll
+                be guided to grant Android&rsquo;s Notification Access on the
+                dashboard.
+              </Text>
+            </View>
+            <Toggle
+              value={settings.notificationCaptureEnabled}
+              onChange={handleToggleNotificationCapture}
+              accessibilityLabel="Capture expenses from notifications"
+            />
+          </View>
         </Section>
 
         <Section title="Categories" palette={palette}>
@@ -186,6 +261,22 @@ export default function SettingsScreen() {
                 strokeWidth={2}
               />
             </Pressable>
+            {FLAGS.enableImport ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Import expenses from CSV"
+                onPress={handleImport}
+                style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.navLabel}>Import from CSV</Text>
+                <PIcon
+                  name="chevron"
+                  size={16}
+                  color={palette.inkSoft}
+                  strokeWidth={2}
+                />
+              </Pressable>
+            ) : null}
           </Section>
         ) : null}
 
@@ -228,6 +319,20 @@ export default function SettingsScreen() {
 
         {FLAGS.enableDevRoutes ? (
           <Section title="Developer" palette={palette}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open notification capture inspector"
+              onPress={() => router.push('/dev/notifications' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Notification capture</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
             {FLAGS.enableDevPending ? (
               <Pressable
                 accessibilityRole="button"
@@ -300,7 +405,7 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.versionLabel}>Nook v1.0 · local-first</Text>
+        <Text style={styles.versionLabel}>Nook v1.5 · local-first</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -431,6 +536,26 @@ function makeStyles(palette: Palette) {
       fontFamily: 'Inter_500Medium',
       fontSize: 14,
       color: palette.ink,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    toggleLabelWrap: {
+      flex: 1,
+    },
+    toggleLabel: {
+      fontFamily: 'Inter_500Medium',
+      fontSize: 14,
+      color: palette.ink,
+    },
+    toggleHint: {
+      fontFamily: 'Inter_400Regular',
+      fontSize: 12,
+      lineHeight: 16,
+      color: palette.inkMuted,
+      marginTop: 4,
     },
   });
 }

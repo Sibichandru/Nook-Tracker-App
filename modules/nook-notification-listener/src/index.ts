@@ -3,6 +3,26 @@ import { Platform } from 'react-native';
 import NookNotificationListenerModule from './NookNotificationListenerModule';
 
 /**
+ * The native module is keyed by name and registered at app startup. When the
+ * JS bundle adds a new method but the APK was built before that method
+ * existed, calling it would throw "undefined is not a function" mid-render.
+ * Wrap each call with a function-existence check so an out-of-date APK
+ * gracefully degrades to a sensible default instead of crashing the screen.
+ */
+function callNative<T>(
+  method: keyof typeof NookNotificationListenerModule,
+  fallback: T,
+): T {
+  const fn = NookNotificationListenerModule[method] as unknown;
+  if (typeof fn !== 'function') return fallback;
+  try {
+    return (fn as () => T).call(NookNotificationListenerModule);
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Whether the user has granted Notification Access to Nook in system
  * settings. Cheap synchronous lookup — safe to call from render.
  *
@@ -11,7 +31,7 @@ import NookNotificationListenerModule from './NookNotificationListenerModule';
  */
 export function isPermissionGranted(): boolean {
   if (Platform.OS !== 'android') return false;
-  return NookNotificationListenerModule.isPermissionGranted();
+  return callNative('isPermissionGranted', false);
 }
 
 /**
@@ -20,7 +40,30 @@ export function isPermissionGranted(): boolean {
  */
 export function openPermissionSettings(): void {
   if (Platform.OS !== 'android') return;
-  NookNotificationListenerModule.openPermissionSettings();
+  callNative('openPermissionSettings', undefined);
+}
+
+/**
+ * Launches this app's "App Info" page in system Settings. Sideloaded users
+ * have to open it once to flip "Allow restricted settings" before the
+ * Notification Access toggle becomes usable on Android 13+.
+ */
+export function openAppDetailsSettings(): void {
+  if (Platform.OS !== 'android') return;
+  callNative('openAppDetailsSettings', undefined);
+}
+
+/**
+ * Package name of whoever installed Nook (e.g. `com.android.vending` for
+ * Play Store). Used to decide whether the user needs the "Allow restricted
+ * settings" step in the setup card.
+ *
+ * Returns '' on non-Android, on APKs that predate this method, or when the
+ * installer is unknown.
+ */
+export function getInstallerPackageName(): string {
+  if (Platform.OS !== 'android') return '';
+  return callNative('getInstallerPackageName', '');
 }
 
 /**
@@ -30,5 +73,33 @@ export function openPermissionSettings(): void {
  */
 export function getQueuePath(): string {
   if (Platform.OS !== 'android') return '';
-  return NookNotificationListenerModule.getQueuePath();
+  return callNative('getQueuePath', '');
+}
+
+/**
+ * Absolute path to the listener's debug log. Each line is a single timestamped
+ * event written by the native service: `CONNECTED`, `DISCONNECTED`, and one
+ * line per `onNotificationPosted` call recording the package name and the
+ * allowlist decision. The dev screen tails this so live capture activity is
+ * visible without an ADB session.
+ *
+ * Returns '' on APKs that predate the debug log (iter 34 mid-point) so
+ * old builds with new JS keep rendering instead of crashing.
+ */
+export function getDebugLogPath(): string {
+  if (Platform.OS !== 'android') return '';
+  return callNative('getDebugLogPath', '');
+}
+
+/**
+ * Absolute path to the JSON file the native service consults for its
+ * allowlist. JS writes a `string[]` of package names to this path; the
+ * service picks up changes on its next notification (cached by mtime).
+ *
+ * Returns '' on APKs that predate the dynamic allowlist so old builds with
+ * new JS degrade silently to the hardcoded baseline on the native side.
+ */
+export function getAllowlistPath(): string {
+  if (Platform.OS !== 'android') return '';
+  return callNative('getAllowlistPath', '');
 }

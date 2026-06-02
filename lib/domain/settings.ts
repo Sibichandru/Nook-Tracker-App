@@ -14,4 +14,5 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultChart: 'bar',
   onboarded: false,
   seededAt: null,
+  notificationCaptureEnabled: false,
 };

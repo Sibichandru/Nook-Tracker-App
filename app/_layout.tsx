@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/auth-context';
+import { useDrainOnForeground } from '@/lib/notifications/useDrainOnForeground';
 import { useStore } from '@/lib/store';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -48,6 +49,7 @@ export default function RootLayout() {
         <ThemeProvider>
           <HydrationGate>
             <AuthProvider>
+              <NotificationDrainer />
               <Stack screenOptions={{ headerShown: false }} />
             </AuthProvider>
           </HydrationGate>
@@ -89,4 +91,14 @@ function HydrationGate({ children }: { children: ReactNode }) {
     );
   }
   return <>{children}</>;
+}
+
+/**
+ * Mount-only effect host for the notification queue drain. Lives inside
+ * HydrationGate so the store is guaranteed-ready before we start inserting
+ * pending rows.
+ */
+function NotificationDrainer() {
+  useDrainOnForeground();
+  return null;
 }

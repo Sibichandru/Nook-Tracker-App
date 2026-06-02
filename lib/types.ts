@@ -108,6 +108,17 @@ export interface Settings {
   onboarded: boolean;
   /** ISO timestamp when default categories were seeded, or null */
   seededAt: string | null;
+  /**
+   * Whether the user has opted in to automatic expense capture from bank
+   * notifications. Off by default — privacy-respecting opt-in.
+   *
+   * When false, the JS-side drain hook is a no-op (queue is never read)
+   * and the dashboard setup banner stays hidden. The native listener
+   * itself stays enabled at the OS level once granted, but its queue
+   * harmlessly accumulates and gets drained the next time the user opts
+   * back in (capped by the native truncation cadence).
+   */
+  notificationCaptureEnabled: boolean;
 }
 
 export interface Filters {

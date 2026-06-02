@@ -14,15 +14,21 @@ export const FLAGS = {
   enableSearch: true,
   enableBudgets: true,
   enableExport: true,
+  // CSV import depends on expo-document-picker (native module). The next
+  // EAS build picks up the dep automatically, so this is on by default now.
+  enableImport: true,
   enableRecurring: true,
-  enableNotifications: false,
+  // Notification capture is now controlled by a per-user setting in the
+  // Settings screen (`settings.notificationCaptureEnabled`). This static
+  // flag is kept for any code path that needs a global kill-switch, but
+  // day-to-day on/off is the user's call.
+  enableNotifications: true,
   // `enableDevRoutes` gates the /dev/* sandbox routes used to visually verify
-  // primitives and icons. True in development builds, false in production.
-  enableDevRoutes: __DEV__,
-  // The pending-tray dev sandbox is only useful while we don't have real
-  // notification capture. Once the native listener (iter 33+) lands, real
-  // pending rows come from JSONL drains — flip this back to __DEV__ if you
-  // need to inspect the tray with synthetic data again.
+  // primitives and icons. Hard-off for v1.5 production rollout — the
+  // sandboxes stay in the bundle but their Settings entrypoints are hidden.
+  enableDevRoutes: false,
+  // Synthetic pending-tray seeder. Off in v1.5 — real captures come from the
+  // native listener; the sandbox isn't useful to ship.
   enableDevPending: false,
 } as const;
 

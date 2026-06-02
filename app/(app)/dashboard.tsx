@@ -17,6 +17,7 @@ import { DashTopBar } from '@/components/dashboard/DashTopBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { FilterSheet, type FilterSheetRef } from '@/components/dashboard/FilterSheet';
 import { HeroCard } from '@/components/dashboard/HeroCard';
+import { NotificationAccessSetup } from '@/components/dashboard/NotificationAccessSetup';
 import { PendingTray } from '@/components/dashboard/PendingTray';
 import { PeriodBar } from '@/components/dashboard/PeriodBar';
 import { TransactionsPane } from '@/components/dashboard/TransactionsPane';
@@ -152,14 +153,16 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        // FilterChips (index 3) pins below the top bar so the category
-        // switcher stays reachable as transactions scroll beneath it.
-        // Index counts ScrollView children in order: PeriodBar (0),
-        // PendingTray (1, may render null), HeroCard wrapper (2),
-        // FilterChips wrapper (3).
-        stickyHeaderIndices={[3]}
+        // FilterChips pins below the top bar so the category switcher stays
+        // reachable as transactions scroll beneath it. Index counts
+        // ScrollView children in order: PeriodBar (0),
+        // NotificationAccessSetup (1, may render null),
+        // PendingTray (2, may render null), HeroCard wrapper (3),
+        // FilterChips wrapper (4).
+        stickyHeaderIndices={[4]}
       >
         <PeriodBar />
+        <NotificationAccessSetup />
         <PendingTray pending={pending} onReview={handleReviewPending} />
         <Animated.View style={heroAnimStyle}>
           <HeroCard

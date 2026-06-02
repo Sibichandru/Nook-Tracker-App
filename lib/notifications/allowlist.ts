@@ -23,7 +23,8 @@ export const ALLOWED_PACKAGES: ReadonlySet<string> = new Set([
   'com.google.android.apps.nbu.paisa.user', // Google Pay India
   'net.one97.paytm',
   'in.org.npci.upiapp', // BHIM
-  'com.cred.app',
+  'com.dreamplug.androidapp', // CRED (current package on Play Store)
+  'com.cred.app', // CRED (legacy package; kept for safety)
   'com.amazon.mShop.android.shopping', // Amazon Pay notifications
 
   // Retail banks
