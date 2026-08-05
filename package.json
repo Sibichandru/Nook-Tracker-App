@@ -1,13 +1,14 @@
 {
   "name": "nook",
   "main": "expo-router/entry",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "icons": "./scripts/gen-icons.sh",
     "check": "tsc --noEmit && expo lint",
     "tunnel": "./scripts/dev-tunnel.sh",
     "build:dev:local": "GOOGLE_SERVICES_JSON=$PWD/google-services.json eas build --profile development --platform android --local",
@@ -39,6 +40,7 @@
     "expo-image": "~3.0.11",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
+    "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.23",
     "expo-sharing": "~14.0.8",
     "expo-splash-screen": "~31.0.13",

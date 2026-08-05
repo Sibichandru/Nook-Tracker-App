@@ -16,4 +16,5 @@ export const DEFAULT_SETTINGS: Settings = {
   seededAt: null,
   notificationCaptureEnabled: false,
   notificationPackages: [],
+  pendingReminderEnabled: false,
 };
