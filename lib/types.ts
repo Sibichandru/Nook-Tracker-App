@@ -119,6 +119,17 @@ export interface Settings {
    * back in (capped by the native truncation cadence).
    */
   notificationCaptureEnabled: boolean;
+  /**
+   * Extra app packages the user has opted into capturing from, on top of the
+   * built-in list in `lib/notifications/allowlist.ts`. Additive only — built-ins
+   * can't be removed from here.
+   *
+   * Populated from the notification diagnostics screen, which discovers
+   * candidates from the native listener's debug log. Written to
+   * `allowlist.json` by `syncAllowlist`, which the native service re-reads on
+   * its next notification — so adding an app never needs a rebuild.
+   */
+  notificationPackages: string[];
 }
 
 export interface Filters {

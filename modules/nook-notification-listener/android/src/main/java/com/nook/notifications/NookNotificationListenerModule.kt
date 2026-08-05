@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
@@ -95,6 +96,104 @@ class NookNotificationListenerModule : Module() {
 
     Function("getAllowlistPath") {
       File(context.filesDir, "allowlist.json").absolutePath
+    }
+
+    // Whether Android currently has the listener service bound. Distinct from
+    // isPermissionGranted(): on OEM ROMs that kill background services the
+    // permission row survives while the binding does not, which looks to the
+    // user like "I granted everything and nothing happens".
+    Function("isListenerConnected") {
+      NookNotificationListenerService.isConnected
+    }
+
+    // Asks Android to re-bind a dropped listener. The repair path for the
+    // above — no user interaction, no re-grant needed.
+    Function("requestRebind") {
+      try {
+        NookNotificationListenerService.rebind(context)
+        true
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    Function("getManufacturer") {
+      Build.MANUFACTURER ?: ""
+    }
+
+    // Battery optimization is the usual reason a listener gets killed on
+    // Xiaomi/Realme/Oppo builds. Exempting the app is a one-tap system dialog.
+    Function("isIgnoringBatteryOptimizations") {
+      try {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        pm.isIgnoringBatteryOptimizations(context.packageName)
+      } catch (_: Exception) {
+        // Treat unknown as "already exempt" so we never nag on a device where
+        // we can't actually tell.
+        true
+      }
+    }
+
+    Function("requestIgnoreBatteryOptimizations") {
+      try {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+          .setData(Uri.parse("package:${context.packageName}"))
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        true
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    // MIUI/HyperOS Autostart. Without it the listener process is never allowed
+    // to start in the background, so capture silently never happens. There is
+    // no public API — this deep-links the Security Center activity, whose
+    // component name has moved across MIUI versions, hence the fallback.
+    Function("openAutostartSettings") {
+      val candidates = listOf(
+        ComponentName(
+          "com.miui.securitycenter",
+          "com.miui.permcenter.autostart.AutoStartManagementActivity"
+        ),
+        ComponentName(
+          "com.coloros.safecenter",
+          "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+        ),
+        ComponentName(
+          "com.coloros.safecenter",
+          "com.coloros.safecenter.startupapp.StartupAppListActivity"
+        )
+      )
+      // Deliberately no resolveActivity() pre-check: on Android 11+ it returns
+      // null for packages outside our <queries> visibility even when the
+      // activity exists, which would make this always fall through on exactly
+      // the devices that need it. Just attempt the launch and catch the
+      // ActivityNotFoundException instead.
+      val opened = candidates.any { component ->
+        try {
+          context.startActivity(
+            Intent()
+              .setComponent(component)
+              .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          )
+          true
+        } catch (_: Exception) {
+          false
+        }
+      }
+      if (!opened) {
+        // Fall back to App Info — battery and autostart controls are reachable
+        // from there on every ROM that has them.
+        try {
+          val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.fromParts("package", context.packageName, null))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          context.startActivity(intent)
+        } catch (_: Exception) {
+        }
+      }
+      opened
     }
   }
 }

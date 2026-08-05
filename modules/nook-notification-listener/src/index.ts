@@ -103,3 +103,61 @@ export function getAllowlistPath(): string {
   if (Platform.OS !== 'android') return '';
   return callNative('getAllowlistPath', '');
 }
+
+/**
+ * Whether Android currently has the listener bound — i.e. whether we are
+ * actually receiving notifications right now.
+ *
+ * This is deliberately separate from {@link isPermissionGranted}. On OEM ROMs
+ * that aggressively kill background services (MIUI/HyperOS especially) the
+ * permission stays granted while the binding is gone, so the user sees "all
+ * permissions on" and no captures. Only this call distinguishes the two.
+ *
+ * Returns false on APKs that predate the method — callers should treat that as
+ * "unknown" rather than "broken", since the fallback is indistinguishable from
+ * a genuinely dead listener.
+ */
+export function isListenerConnected(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return callNative('isListenerConnected', false);
+}
+
+/**
+ * Asks Android to re-bind a dropped listener. Returns false if the request
+ * couldn't be made. Safe to call when already connected.
+ */
+export function requestRebind(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return callNative('requestRebind', false);
+}
+
+/** `Build.MANUFACTURER`, lowercased by callers as needed. '' when unknown. */
+export function getManufacturer(): string {
+  if (Platform.OS !== 'android') return '';
+  return callNative('getManufacturer', '');
+}
+
+/**
+ * Whether the app is exempt from battery optimization. Defaults to true on
+ * failure or on old APKs so we never nag the user based on a guess.
+ */
+export function isIgnoringBatteryOptimizations(): boolean {
+  if (Platform.OS !== 'android') return true;
+  return callNative('isIgnoringBatteryOptimizations', true);
+}
+
+/** Opens the system "ignore battery optimizations" confirmation dialog. */
+export function requestIgnoreBatteryOptimizations(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return callNative('requestIgnoreBatteryOptimizations', false);
+}
+
+/**
+ * Deep-links the OEM autostart manager (MIUI Security Center, ColorOS Safe
+ * Center). Falls back to App Info natively when no known activity resolves.
+ * Returns true only when a real autostart screen was opened.
+ */
+export function openAutostartSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return callNative('openAutostartSettings', false);
+}

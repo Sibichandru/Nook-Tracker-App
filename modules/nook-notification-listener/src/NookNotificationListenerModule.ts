@@ -8,6 +8,12 @@ type NookNotificationListenerNativeModule = {
   getQueuePath: () => string;
   getDebugLogPath: () => string;
   getAllowlistPath: () => string;
+  isListenerConnected: () => boolean;
+  requestRebind: () => boolean;
+  getManufacturer: () => string;
+  isIgnoringBatteryOptimizations: () => boolean;
+  requestIgnoreBatteryOptimizations: () => boolean;
+  openAutostartSettings: () => boolean;
 };
 
 export default requireNativeModule<NookNotificationListenerNativeModule>(

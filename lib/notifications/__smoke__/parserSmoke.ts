@@ -13,6 +13,7 @@
 
 import { strict as assert } from 'node:assert';
 
+import { extractSeenPackages, summarizeListenerLog } from '../health.ts';
 import {
   parseNotification,
   type NotificationPayload,
@@ -22,6 +23,8 @@ import {
 type Fixture = {
   name: string;
   payload: NotificationPayload;
+  /** The user's allowlist additions, as `drain.ts` passes them at runtime. */
+  extra?: string[];
   expect:
     | (Partial<Omit<ParsedTransaction, 'date' | 'time'>> & { _null?: false })
     | { _null: true };
@@ -287,10 +290,84 @@ const fixtures: Fixture[] = [
     },
     expect: { _null: true },
   },
+
+  // --- SMS bank alerts (via Google Messages) -------------------------------
+  // Most Indian bank alerts arrive as texts, so the notification is posted by
+  // the messaging app: the sender ID is the title and the body carries masked
+  // account numbers and a reference. Wording differs enough from in-app
+  // notifications to be worth pinning separately.
+  {
+    name: 'SMS: HDFC debit with masked account and VPA',
+    payload: {
+      packageName: 'com.google.android.apps.messaging',
+      title: 'AD-HDFCBK',
+      body: 'Rs.500.00 debited from A/c XXXXXX1234 on 04-Aug-26 to VPA merchant@ybl. Ref 123456. -HDFC Bank',
+      postTime: POST_TIME,
+    },
+    expect: { amount: 500, type: 'expense' },
+  },
+  {
+    name: 'SMS: SBI credit',
+    payload: {
+      packageName: 'com.google.android.apps.messaging',
+      title: 'JD-SBIBNK',
+      body: 'Your A/c XX1234 is credited with Rs 25,000.00 on 01-Aug-26 -SBI',
+      postTime: POST_TIME,
+    },
+    expect: { amount: 25000, type: 'income' },
+  },
+  {
+    name: 'SMS: grouped notification summary — rejected (no amount)',
+    payload: {
+      packageName: 'com.google.android.apps.messaging',
+      title: 'Messages',
+      body: '2 new messages',
+      postTime: POST_TIME,
+    },
+    // Google Messages collapses several texts into a summary with no content.
+    // Recovering these needs EXTRA_BIG_TEXT/EXTRA_MESSAGES on the native side.
+    expect: { _null: true },
+  },
+
+  // --- User-added packages (Settings.notificationPackages) -----------------
+  {
+    name: 'User-added package: rejected without `extra`',
+    payload: {
+      packageName: 'com.somebrand.bank',
+      title: 'Transaction alert',
+      body: 'Rs 250.00 debited at CAFE COFFEE DAY',
+      postTime: POST_TIME,
+    },
+    expect: { _null: true },
+  },
+  {
+    name: 'User-added package: parses with `extra`, falls back to bank method',
+    payload: {
+      packageName: 'com.somebrand.bank',
+      title: 'Transaction alert',
+      body: 'Rs 250.00 debited at CAFE COFFEE DAY',
+      postTime: POST_TIME,
+    },
+    extra: ['com.somebrand.bank'],
+    // No paymentMap entry exists for this package — pins the 'bank' fallback,
+    // which is why adding an app needs no paymentMap edit.
+    expect: { amount: 250, type: 'expense', paymentMethod: 'bank' },
+  },
+  {
+    name: 'Built-in package still parses when `extra` is unrelated',
+    payload: {
+      packageName: 'com.phonepe.app',
+      title: 'Payment Successful',
+      body: 'You paid Rs 75.00 to ZEPTO via UPI',
+      postTime: POST_TIME,
+    },
+    extra: ['com.somebrand.bank'],
+    expect: { amount: 75, type: 'expense', paymentMethod: 'upi' },
+  },
 ];
 
 function runFixture(f: Fixture, index: number): void {
-  const result = parseNotification(f.payload);
+  const result = parseNotification(f.payload, f.extra ?? []);
   const tag = `[${index + 1}/${fixtures.length}] ${f.name}`;
 
   if ('_null' in f.expect && f.expect._null === true) {
@@ -332,8 +409,194 @@ fixtures.forEach((f, i) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// summarizeListenerLog — the diagnostics screen's "is capture alive?" answer.
+// Lives here rather than in its own file so `npm run smoke:parser` stays the
+// single command that gates this directory.
+// ---------------------------------------------------------------------------
+
+const T0 = '2026-05-14T12:00:00.000Z';
+const T1 = '2026-05-14T12:05:00.000Z';
+const T2 = '2026-05-14T12:10:00.000Z';
+const NOW = Date.parse('2026-05-14T12:15:00.000Z');
+
+const healthChecks: { name: string; run: () => void }[] = [
+  {
+    name: 'empty log → never_connected',
+    run: () => {
+      const h = summarizeListenerLog('', NOW);
+      assert.equal(h.status, 'never_connected');
+      assert.equal(h.lastConnectedAt, null);
+    },
+  },
+  {
+    name: 'placeholder text (no timestamped lines) → never_connected',
+    run: () => {
+      const h = summarizeListenerLog('(file does not exist yet)', NOW);
+      assert.equal(h.status, 'never_connected');
+    },
+  },
+  {
+    name: 'CONNECTED only → connected_idle',
+    run: () => {
+      const h = summarizeListenerLog(`${T0} CONNECTED allowlist_size=15`, NOW);
+      assert.equal(h.status, 'connected_idle');
+      assert.equal(h.lastConnectedAt, T0);
+    },
+  },
+  {
+    name: 'CONNECTED then DISCONNECTED → disconnected',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T1} DISCONNECTED requested_rebind=1`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW);
+      assert.equal(h.status, 'disconnected');
+    },
+  },
+  {
+    name: 'DISCONNECTED then a later CONNECTED → not disconnected',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T1} DISCONNECTED requested_rebind=1`,
+        `${T2} CONNECTED allowlist_size=15`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW);
+      assert.equal(h.status, 'connected_idle');
+      assert.equal(h.lastConnectedAt, T2);
+    },
+  },
+  {
+    name: 'recent accepted capture → healthy',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T1} POSTED pkg=com.phonepe.app decision=accepted title=Payment`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW);
+      assert.equal(h.status, 'healthy');
+      assert.equal(h.lastAcceptedAt, T1);
+    },
+  },
+  {
+    name: 'accepted capture older than 24h → connected_idle',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T1} POSTED pkg=com.phonepe.app decision=accepted title=Payment`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW + 48 * 60 * 60 * 1000);
+      assert.equal(h.status, 'connected_idle');
+    },
+  },
+  {
+    name: 'dropped-only captures set lastSeenAnyAt but not lastAcceptedAt',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T1} POSTED pkg=com.whatsapp decision=dropped reason=not_allowlisted`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW);
+      assert.equal(h.lastSeenAnyAt, T1);
+      assert.equal(h.lastAcceptedAt, null);
+      assert.equal(h.status, 'connected_idle');
+    },
+  },
+  {
+    name: 'rolled log with POSTED but no CONNECTED → connected_idle, rolled',
+    run: () => {
+      const log = [
+        `${T0} [LOG_ROLLED]`,
+        `${T1} POSTED pkg=com.phonepe.app decision=dropped reason=blank_body`,
+      ].join('\n');
+      const h = summarizeListenerLog(log, NOW);
+      assert.equal(h.rolled, true);
+      // A live POSTED line proves the listener is bound even though the
+      // CONNECTED event was rolled away — must not report never_connected.
+      assert.equal(h.status, 'connected_idle');
+    },
+  },
+
+  // extractSeenPackages — the tap-to-add discovery list.
+  {
+    name: 'seen packages: empty log → []',
+    run: () => {
+      assert.deepEqual(extractSeenPackages(''), []);
+    },
+  },
+  {
+    name: 'seen packages: only not_allowlisted lines count',
+    run: () => {
+      const log = [
+        `${T0} CONNECTED allowlist_size=15`,
+        `${T0} POSTED pkg=com.phonepe.app decision=accepted title=Paid`,
+        `${T1} POSTED pkg=com.acme.bank decision=dropped reason=blank_body`,
+        `${T1} POSTED pkg=com.naviapp decision=dropped reason=not_allowlisted`,
+        `${T2} POSTED pkg=com.snapchat.android decision=dropped reason=not_allowlisted`,
+      ].join('\n');
+      assert.deepEqual(extractSeenPackages(log), [
+        'com.snapchat.android',
+        'com.naviapp',
+      ]);
+    },
+  },
+  {
+    name: 'seen packages: repeated package appears once',
+    run: () => {
+      const log = [
+        `${T0} POSTED pkg=com.naviapp decision=dropped reason=not_allowlisted`,
+        `${T1} POSTED pkg=com.naviapp decision=dropped reason=not_allowlisted`,
+        `${T2} POSTED pkg=com.naviapp decision=dropped reason=not_allowlisted`,
+      ].join('\n');
+      assert.deepEqual(extractSeenPackages(log), ['com.naviapp']);
+    },
+  },
+  {
+    name: 'seen packages: newest first even when lines are fed reversed',
+    run: () => {
+      // The diagnostics screen reverses the log for display, so ordering must
+      // come from the timestamps rather than line position.
+      const lines = [
+        `${T0} POSTED pkg=com.first.app decision=dropped reason=not_allowlisted`,
+        `${T1} POSTED pkg=com.second.app decision=dropped reason=not_allowlisted`,
+        `${T2} POSTED pkg=com.third.app decision=dropped reason=not_allowlisted`,
+      ];
+      const expected = ['com.third.app', 'com.second.app', 'com.first.app'];
+      assert.deepEqual(extractSeenPackages(lines.join('\n')), expected);
+      assert.deepEqual(
+        extractSeenPackages([...lines].reverse().join('\n')),
+        expected,
+      );
+    },
+  },
+  {
+    name: 'seen packages: placeholder junk → []',
+    run: () => {
+      assert.deepEqual(extractSeenPackages('(empty)'), []);
+      assert.deepEqual(
+        extractSeenPackages('Error reading file: ENOENT'),
+        [],
+      );
+    },
+  },
+];
+
+for (const check of healthChecks) {
+  try {
+    check.run();
+    console.log(`✓ health: ${check.name}`);
+  } catch (e) {
+    failed += 1;
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`✗ health: ${check.name} — ${msg}`);
+  }
+}
+
+const total = fixtures.length + healthChecks.length;
 if (failed > 0) {
-  console.error(`\n${failed} of ${fixtures.length} fixture(s) failed`);
+  console.error(`\n${failed} of ${total} check(s) failed`);
   process.exit(1);
 }
-console.log(`\nAll ${fixtures.length} fixtures passed`);
+console.log(`\nAll ${total} checks passed`);
