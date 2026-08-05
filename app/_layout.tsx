@@ -8,17 +8,19 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { type ReactNode, useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { NookLoadingScreen } from '@/components/ui/NookLoadingScreen';
 import { AuthProvider } from '@/lib/auth-context';
 import { useDrainOnForeground } from '@/lib/notifications/useDrainOnForeground';
+import { usePendingReminder } from '@/lib/notifications/usePendingReminder';
 import { useStore } from '@/lib/store';
-import { ThemeProvider, useTheme } from '@/lib/theme';
+import { ThemeProvider } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // best effort — splash will still hide automatically if this throws
@@ -67,7 +69,6 @@ export default function RootLayout() {
 function HydrationGate({ children }: { children: ReactNode }) {
   const hydrated = useStore((s) => s.hydrated);
   const hydrate = useStore((s) => s.hydrate);
-  const { palette } = useTheme();
 
   useEffect(() => {
     hydrate().catch((e) => {
@@ -77,28 +78,41 @@ function HydrationGate({ children }: { children: ReactNode }) {
   }, [hydrate]);
 
   if (!hydrated) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: palette.bg,
-        }}
-      >
-        <ActivityIndicator color={palette.ink} />
-      </View>
-    );
+    return <NookLoadingScreen />;
   }
   return <>{children}</>;
 }
 
 /**
- * Mount-only effect host for the notification queue drain. Lives inside
- * HydrationGate so the store is guaranteed-ready before we start inserting
- * pending rows.
+ * Mount-only effect host for the notification queue drain and the pending
+ * review reminder. Lives inside HydrationGate so the store is guaranteed-ready
+ * before we start inserting pending rows or counting them.
  */
 function NotificationDrainer() {
   useDrainOnForeground();
+  usePendingReminder();
+  useNotificationRouting();
   return null;
+}
+
+/**
+ * Sends the user to the dashboard when they tap the reminder, since that's
+ * where the pending tray lives. Handles both a cold start from the notification
+ * and a tap while the app is already running.
+ */
+function useNotificationRouting() {
+  useEffect(() => {
+    const go = (response: Notifications.NotificationResponse | null) => {
+      const route = response?.notification.request.content.data?.route;
+      if (typeof route === 'string') {
+        router.push(route as never);
+      }
+    };
+
+    // Cold start: the tap that launched the app is retrievable after the fact.
+    Notifications.getLastNotificationResponseAsync().then(go).catch(() => {});
+
+    const sub = Notifications.addNotificationResponseReceivedListener(go);
+    return () => sub.remove();
+  }, []);
 }

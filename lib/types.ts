@@ -130,6 +130,15 @@ export interface Settings {
    * its next notification — so adding an app never needs a rebuild.
    */
   notificationPackages: string[];
+  /**
+   * Whether to post a reminder when auto-captured expenses are left unreviewed.
+   * Off by default — it needs POST_NOTIFICATIONS, which we only ask for once
+   * the user has asked for the feature.
+   *
+   * Scheduled on backgrounding and cancelled on foregrounding, so it never
+   * fires while the user is in the app. See lib/notifications/reminder.ts.
+   */
+  pendingReminderEnabled: boolean;
 }
 
 export interface Filters {

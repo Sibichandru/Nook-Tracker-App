@@ -24,6 +24,12 @@ import { useAuth } from '@/lib/auth-context';
 import { exportAndShareExpenses } from '@/lib/export';
 import { FLAGS } from '@/lib/featureFlags';
 import { pickAndParseCSV } from '@/lib/import';
+import {
+  cancelPendingReminder,
+  ensureReminderChannel,
+  REMINDER_DELAY_HOURS,
+  requestReminderPermission,
+} from '@/lib/notifications/reminder';
 import { useStore } from '@/lib/store';
 import {
   type AccentKey,
@@ -145,6 +151,32 @@ export default function SettingsScreen() {
     void updateSettings({ density: d });
   };
 
+  /**
+   * Asks for POST_NOTIFICATIONS only when the user opts in. If they decline
+   * (or previously hard-denied, where the OS silently refuses to re-prompt) the
+   * toggle stays off — showing it on while nothing can be posted would be a
+   * lie the user has no way to debug.
+   */
+  const handleTogglePendingReminder = (next: boolean) => {
+    if (!next) {
+      void updateSettings({ pendingReminderEnabled: false });
+      void cancelPendingReminder();
+      return;
+    }
+    void (async () => {
+      const allowed = await requestReminderPermission();
+      if (!allowed) {
+        Alert.alert(
+          'Notifications are blocked',
+          'Nook needs notification permission to remind you. Turn it on for Nook in Android Settings → Apps → Nook → Notifications.',
+        );
+        return;
+      }
+      await ensureReminderChannel();
+      await updateSettings({ pendingReminderEnabled: true });
+    })();
+  };
+
   const handleToggleNotificationCapture = (next: boolean) => {
     void updateSettings({ notificationCaptureEnabled: next });
     // Clear the dashboard banner dismissal when the user re-enables capture,
@@ -255,6 +287,22 @@ export default function SettingsScreen() {
               />
             </Pressable>
           ) : null}
+
+          <View style={styles.toggleRowSpaced}>
+            <View style={styles.toggleLabelWrap}>
+              <Text style={styles.toggleLabel}>Remind me to review</Text>
+              <Text style={styles.toggleHint}>
+                If captured expenses are left unreviewed, Nook nudges you once,
+                about {REMINDER_DELAY_HOURS} hours after you close the app.
+                Never while you&rsquo;re using it.
+              </Text>
+            </View>
+            <Toggle
+              value={settings.pendingReminderEnabled}
+              onChange={handleTogglePendingReminder}
+              accessibilityLabel="Remind me to review pending expenses"
+            />
+          </View>
         </Section>
 
         <Section title="Categories" palette={palette}>
@@ -557,6 +605,13 @@ function makeStyles(palette: Palette) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+    },
+    // Sibling toggle rows have no inherent spacing between them.
+    toggleRowSpaced: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 18,
     },
     toggleLabelWrap: {
       flex: 1,

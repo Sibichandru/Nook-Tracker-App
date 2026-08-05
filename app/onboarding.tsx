@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardSlide } from '@/components/onboarding/OnboardSlide';
 import { Button } from '@/components/ui/Button';
+import { NookMark, NookWordmark } from '@/components/ui/NookMark';
 import { type PIconName } from '@/components/ui/PIcon';
 import { StepDots } from '@/components/ui/StepDots';
 import { useStore } from '@/lib/store';
@@ -75,6 +76,15 @@ export default function OnboardingScreen() {
         </Pressable>
       </View>
 
+      {/* Brand the first screen only. On later slides the illustration is the
+          focus, and a persistent lockup would compete with it. */}
+      {step === 0 ? (
+        <View style={styles.brand}>
+          <NookMark size={44} />
+          <NookWordmark size={26} />
+        </View>
+      ) : null}
+
       <View style={styles.body}>
         <OnboardSlide
           icon={slide.icon}
@@ -122,6 +132,13 @@ function makeStyles(palette: Palette) {
     },
     pressed: {
       opacity: 0.6,
+    },
+    brand: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      paddingTop: 8,
     },
     body: {
       flex: 1,
