@@ -100,11 +100,18 @@ function formatLocalTime(d: Date): string {
  * This is the single chokepoint for converting raw notification text into
  * structured data — anywhere else in the codebase that wants to turn
  * notification text into a row goes through here.
+ *
+ * `extraPackages` is the user's own allowlist additions
+ * (`Settings.notificationPackages`), passed in by the caller so this module
+ * stays pure and node-runnable. Note the native service applies its own copy of
+ * the allowlist independently; both gates must agree or a notification is
+ * accepted natively and then dropped here without a trace.
  */
 export function parseNotification(
   raw: NotificationPayload,
+  extraPackages: readonly string[] = [],
 ): ParsedTransaction | null {
-  if (!isAllowedPackage(raw.packageName)) return null;
+  if (!isAllowedPackage(raw.packageName, extraPackages)) return null;
 
   // Search the combined title+body so multi-line bank notifications where
   // the amount lives in the title and the verb in the body still parse.

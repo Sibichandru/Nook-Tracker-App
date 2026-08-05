@@ -1,6 +1,8 @@
 package com.nook.notifications
 
 import android.app.Notification
+import android.content.ComponentName
+import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -46,6 +48,43 @@ class NookNotificationListenerService : NotificationListenerService() {
     private val QUEUE_LOCK = Any()
     private val DEBUG_LOCK = Any()
     private val ALLOWLIST_LOCK = Any()
+
+    /**
+     * Whether Android currently has us bound. Read from the JS bridge so the
+     * app can tell "permission granted" (a Settings.Secure row) apart from
+     * "actually receiving notifications" — on aggressive OEM ROMs the first can
+     * be true while the second is false, which is the whole reason capture
+     * silently dies on some devices.
+     */
+    @Volatile
+    var isConnected: Boolean = false
+      private set
+
+    /**
+     * Packages we've already logged a `not_allowlisted` line for this service
+     * lifetime. Without this, every notification on the device writes a line
+     * and the 64 KB rolling cap erases the CONNECTED/DISCONNECTED history —
+     * the exact evidence needed to diagnose a dead listener. First sighting per
+     * package still gets logged, so package discovery is unaffected.
+     */
+    private val loggedUnknownPackages = java.util.Collections.newSetFromMap(
+      java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    )
+
+    /**
+     * Asks Android to re-bind the listener. Safe to call when already bound —
+     * the platform ignores a redundant request. Called from JS on foreground
+     * whenever permission is granted but {@link isConnected} is false.
+     *
+     * Named `rebind` rather than `requestRebind` on purpose: an unqualified
+     * `requestRebind(...)` inside this companion would resolve to itself and
+     * recurse instead of reaching the platform static.
+     */
+    fun rebind(context: Context) {
+      NotificationListenerService.requestRebind(
+        ComponentName(context, NookNotificationListenerService::class.java)
+      )
+    }
 
     /**
      * Hardcoded baseline used until JS writes its preferred set to disk. Kept
@@ -146,7 +185,10 @@ class NookNotificationListenerService : NotificationListenerService() {
     }
 
     if (pkg !in currentAllowlist()) {
-      appendDebugLog("POSTED pkg=$pkg decision=dropped reason=not_allowlisted")
+      // Log only the first sighting per package — see loggedUnknownPackages.
+      if (loggedUnknownPackages.add(pkg)) {
+        appendDebugLog("POSTED pkg=$pkg decision=dropped reason=not_allowlisted")
+      }
       return
     }
 
@@ -196,13 +238,32 @@ class NookNotificationListenerService : NotificationListenerService() {
 
   override fun onListenerConnected() {
     Log.d(TAG, "Notification listener connected")
+    isConnected = true
+    // A fresh binding means a fresh process in most cases, but not always
+    // (Android can rebind without tearing us down). Clear the throttle so the
+    // first notification from each package after a reconnect is logged again.
+    loggedUnknownPackages.clear()
     val size = currentAllowlist().size
     appendDebugLog("CONNECTED allowlist_size=$size")
   }
 
+  /**
+   * Android drops the binding on low memory, app updates, and — most relevant
+   * here — OEM battery managers. Without asking for it back, capture stops
+   * permanently until the user manually toggles Notification Access. That is
+   * the failure mode behind "it worked on my other phone".
+   */
   override fun onListenerDisconnected() {
     Log.d(TAG, "Notification listener disconnected")
-    appendDebugLog("DISCONNECTED")
+    isConnected = false
+    val requested = try {
+      rebind(this)
+      true
+    } catch (e: Exception) {
+      Log.e(TAG, "requestRebind failed", e)
+      false
+    }
+    appendDebugLog("DISCONNECTED requested_rebind=${if (requested) 1 else 0}")
   }
 
   /**

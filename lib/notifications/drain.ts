@@ -36,6 +36,46 @@ export type DrainResult = {
 
 const EMPTY_RESULT: DrainResult = { inserted: 0, skipped: 0, invalid: 0 };
 
+/**
+ * Rejected lines are written here so "captured but not parsed" is
+ * distinguishable from "never captured". Without it the queue is truncated
+ * and the evidence is gone: the only symptom is an empty pending tray, which
+ * looks identical to a dead listener.
+ */
+export const REJECTS_FILENAME = 'drain-rejects.jsonl';
+
+/** Keep the reject file small — it's a debugging aid, not an archive. */
+const MAX_REJECT_LINES = 50;
+
+export function getRejectsUri(): string | null {
+  const dir = FileSystem.documentDirectory;
+  return dir ? `${dir}${REJECTS_FILENAME}` : null;
+}
+
+/**
+ * Overwrites the reject file with this pass's failures. Overwrite rather than
+ * append: the user's question is always "why did the payment I just made not
+ * show up", so the most recent pass is the only one that matters.
+ *
+ * Writes even when there are no rejects, so a clean pass clears stale failures
+ * instead of leaving the diagnostics screen accusing a bank that now parses
+ * fine. Only called when a pass actually had lines to process — a foreground
+ * with an empty queue returns earlier and leaves the last real result intact.
+ */
+async function writeRejects(lines: string[]): Promise<void> {
+  const uri = getRejectsUri();
+  if (!uri) return;
+  try {
+    await FileSystem.writeAsStringAsync(
+      uri,
+      lines.slice(0, MAX_REJECT_LINES).join('\n'),
+      { encoding: FileSystem.EncodingType.UTF8 },
+    );
+  } catch {
+    // Diagnostics are best-effort — never fail a drain over them.
+  }
+}
+
 function isNotificationPayload(v: unknown): v is NotificationPayload {
   if (typeof v !== 'object' || v === null) return false;
   const o = v as Record<string, unknown>;
@@ -93,11 +133,16 @@ export async function drainNotificationQueue(): Promise<DrainResult> {
   if (lines.length === 0) return EMPTY_RESULT;
 
   const result: DrainResult = { inserted: 0, skipped: 0, invalid: 0 };
+  const rejects: string[] = [];
 
   // Pull live store handles once — the addExpense action updates state on
   // each call, so re-reading `expenses` between inserts catches any rows we
   // just added in this same drain pass.
   const { addExpense } = useStore.getState();
+  // The user's allowlist additions. The native service gates on its own copy in
+  // allowlist.json; if this didn't match, a notification would be captured
+  // natively and then silently dropped by the parser.
+  const extraPackages = useStore.getState().settings.notificationPackages;
 
   for (const line of lines) {
     let payload: unknown;
@@ -105,15 +150,21 @@ export async function drainNotificationQueue(): Promise<DrainResult> {
       payload = JSON.parse(line);
     } catch {
       result.invalid += 1;
+      rejects.push(`reason=json_parse ${line}`);
       continue;
     }
     if (!isNotificationPayload(payload)) {
       result.invalid += 1;
+      rejects.push(`reason=bad_shape ${line}`);
       continue;
     }
-    const parsed = parseNotification(payload);
+    const parsed = parseNotification(payload, extraPackages);
     if (!parsed) {
+      // The common case: capture worked, the parser's amount/verb heuristics
+      // didn't match this bank's wording. Keeping the raw line is what makes
+      // that fixable instead of invisible.
       result.invalid += 1;
+      rejects.push(`reason=unparsed ${line}`);
       continue;
     }
 
@@ -153,6 +204,8 @@ export async function drainNotificationQueue(): Promise<DrainResult> {
     });
     result.inserted += 1;
   }
+
+  await writeRejects(rejects);
 
   return result;
 }

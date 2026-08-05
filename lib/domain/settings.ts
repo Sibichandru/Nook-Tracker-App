@@ -15,4 +15,5 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   seededAt: null,
   notificationCaptureEnabled: false,
+  notificationPackages: [],
 };

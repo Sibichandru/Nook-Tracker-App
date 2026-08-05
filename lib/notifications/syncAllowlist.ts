@@ -17,6 +17,8 @@ import { Platform } from 'react-native';
 
 import { getAllowlistPath } from 'nook-notification-listener';
 
+import { useStore } from '@/lib/store';
+
 import { ALLOWED_PACKAGES } from './allowlist';
 
 export type SyncAllowlistResult =
@@ -32,9 +34,17 @@ export async function syncAllowlist(): Promise<SyncAllowlistResult> {
     return { status: 'noop', reason: 'no-native-path' };
   }
   const uri = path.startsWith('file://') ? path : `file://${path}`;
+  // Built-ins plus the user's own additions. Read from the store at call time
+  // rather than taken as a parameter, so every caller (including the foreground
+  // drain, whose effect doesn't re-run when the list changes) always writes the
+  // current list.
+  //
   // Sort so order is deterministic regardless of Set iteration semantics —
   // makes the "already-current" comparison stable.
-  const packages = Array.from(ALLOWED_PACKAGES).sort();
+  const userPackages = useStore.getState().settings.notificationPackages;
+  const packages = Array.from(
+    new Set([...ALLOWED_PACKAGES, ...userPackages]),
+  ).sort();
   const next = JSON.stringify(packages);
 
   try {

@@ -32,9 +32,13 @@ import { Card } from '@/components/ui/Card';
 import { PIcon } from '@/components/ui/PIcon';
 import {
   getInstallerPackageName,
+  getManufacturer,
+  isIgnoringBatteryOptimizations,
   isPermissionGranted,
   openAppDetailsSettings,
+  openAutostartSettings,
   openPermissionSettings,
+  requestIgnoreBatteryOptimizations,
 } from 'nook-notification-listener';
 import { useStore } from '@/lib/store';
 import { useAccent, type Palette, useTheme } from '@/lib/theme';
@@ -46,6 +50,15 @@ export const NOTIFICATION_SETUP_DISMISS_KEY = 'nook:notificationSetupDismissed';
 // show the restricted-settings step defensively.
 const PLAY_STORE_INSTALLERS = new Set(['com.android.vending']);
 
+/**
+ * OEM skins whose background-process management stops a NotificationListener
+ * from ever binding (or kills it shortly after) unless the user also grants
+ * Autostart and a battery exemption. Granting Notification Access alone is not
+ * enough on these, which is why capture can work on one phone and silently do
+ * nothing on another with identical in-app settings.
+ */
+const RESTRICTIVE_OEM_RE = /xiaomi|redmi|poco|oppo|realme|oneplus|vivo|iqoo|meizu|huawei|honor/i;
+
 export function NotificationAccessSetup() {
   const { palette } = useTheme();
   const accent = useAccent();
@@ -53,6 +66,8 @@ export function NotificationAccessSetup() {
   const captureEnabled = useStore((s) => s.settings.notificationCaptureEnabled);
 
   const [granted, setGranted] = useState<boolean | null>(null);
+  const [batteryExempt, setBatteryExempt] = useState<boolean>(true);
+  const [restrictiveOem, setRestrictiveOem] = useState<boolean>(false);
   const [dismissed, setDismissed] = useState<boolean | null>(null);
   const [isSideloaded, setIsSideloaded] = useState<boolean>(true);
 
@@ -63,10 +78,21 @@ export function NotificationAccessSetup() {
       .then((raw) => setDismissed(raw === '1'))
       .catch(() => setDismissed(false));
     setIsSideloaded(!PLAY_STORE_INSTALLERS.has(getInstallerPackageName()));
+    setRestrictiveOem(RESTRICTIVE_OEM_RE.test(getManufacturer()));
   }, []);
 
   const refresh = useCallback(() => {
-    setGranted(isPermissionGranted());
+    const nowGranted = isPermissionGranted();
+    setGranted((prev) => {
+      // Permission revoked behind our back (OEM cleanup, app update). Clear the
+      // dismissal so the card comes back instead of failing silently forever.
+      if (prev === true && !nowGranted) {
+        setDismissed(false);
+        AsyncStorage.removeItem(NOTIFICATION_SETUP_DISMISS_KEY).catch(() => {});
+      }
+      return nowGranted;
+    });
+    setBatteryExempt(isIgnoringBatteryOptimizations());
   }, []);
 
   useEffect(() => {
@@ -84,7 +110,21 @@ export function NotificationAccessSetup() {
 
   if (!captureEnabled) return null;
   if (granted === null || dismissed === null) return null;
-  if (granted || dismissed) return null;
+  if (dismissed) return null;
+  // Granted-but-not-working is the case this card previously hid from: on a
+  // restrictive ROM the permission reads as on while the listener never binds,
+  // so the user saw no card and no captures.
+  //
+  // The trigger is the ROM itself, not a liveness probe: Autostart has no
+  // readable state at all, and isListenerConnected() is false for a moment
+  // after cold start before Android binds us — gating on it would nag users
+  // whose capture is fine. Restrictive ROM ⇒ show the steps once; the card is
+  // dismissible, and Settings → Manage captured apps has the live status.
+  const needsOemSteps = restrictiveOem;
+  if (granted && !needsOemSteps) return null;
+
+  let step = 0;
+  const nextStep = () => (step += 1);
 
   return (
     <Card style={styles.card} padding={0} radius={16} elevation="sm">
@@ -93,10 +133,15 @@ export function NotificationAccessSetup() {
           <PIcon name="bell" size={18} color={accent.base} strokeWidth={2} />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Auto-capture from notifications</Text>
+          <Text style={styles.title}>
+            {granted
+              ? 'Finish setup so capture keeps working'
+              : 'Auto-capture from notifications'}
+          </Text>
           <Text style={styles.subtitle}>
-            Grant access so Nook can log expenses from your bank and UPI
-            notifications.
+            {granted
+              ? 'Notification access is on, but this phone can still stop Nook from listening in the background. These two steps prevent that.'
+              : 'Grant access so Nook can log expenses from your bank and UPI notifications.'}
           </Text>
         </View>
         <Pressable
@@ -113,9 +158,9 @@ export function NotificationAccessSetup() {
       <View style={styles.divider} />
 
       <View style={styles.steps}>
-        {isSideloaded ? (
+        {!granted && isSideloaded ? (
           <Step
-            index={1}
+            index={nextStep()}
             palette={palette}
             accent={accent.base}
             title="Allow restricted settings"
@@ -124,21 +169,45 @@ export function NotificationAccessSetup() {
             onPress={openAppDetailsSettings}
           />
         ) : null}
+        {!granted ? (
+          <Step
+            index={nextStep()}
+            palette={palette}
+            accent={accent.base}
+            title="Turn on Notification Access"
+            body="Find Nook in the list and flip the toggle on. Confirm “Allow” when prompted."
+            ctaLabel="Open Notification Access"
+            onPress={openPermissionSettings}
+          />
+        ) : null}
+        {needsOemSteps && !batteryExempt ? (
+          <Step
+            index={nextStep()}
+            palette={palette}
+            accent={accent.base}
+            title="Stop battery optimisation"
+            body="Your phone can shut Nook's listener down in the background. Tap below and choose “Allow”."
+            ctaLabel="Allow background activity"
+            onPress={requestIgnoreBatteryOptimizations}
+          />
+        ) : null}
+        {needsOemSteps ? (
+          <Step
+            index={nextStep()}
+            palette={palette}
+            accent={accent.base}
+            title="Enable Autostart"
+            body="Turn Autostart on for Nook, then lock Nook in the Recents screen (swipe up, long-press Nook, tap the padlock). Without this the listener never starts."
+            ctaLabel="Open Autostart settings"
+            onPress={openAutostartSettings}
+          />
+        ) : null}
         <Step
-          index={isSideloaded ? 2 : 1}
-          palette={palette}
-          accent={accent.base}
-          title="Turn on Notification Access"
-          body="Find Nook in the list and flip the toggle on. Confirm “Allow” when prompted."
-          ctaLabel="Open Notification Access"
-          onPress={openPermissionSettings}
-        />
-        <Step
-          index={isSideloaded ? 3 : 2}
+          index={nextStep()}
           palette={palette}
           accent={accent.base}
           title="Return to Nook"
-          body="This card disappears automatically once access is granted."
+          body="This card disappears automatically once capture is set up. Settings → Manage captured apps shows whether it's working."
         />
       </View>
     </Card>

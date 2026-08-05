@@ -239,6 +239,22 @@ export default function SettingsScreen() {
               accessibilityLabel="Capture expenses from notifications"
             />
           </View>
+          {settings.notificationCaptureEnabled ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Manage apps captured from notifications"
+              onPress={() => router.push('/notification-apps' as never)}
+              style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.navLabel}>Manage captured apps</Text>
+              <PIcon
+                name="chevron"
+                size={16}
+                color={palette.inkSoft}
+                strokeWidth={2}
+              />
+            </Pressable>
+          ) : null}
         </Section>
 
         <Section title="Categories" palette={palette}>
@@ -325,7 +341,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/dev/notifications' as never)}
               style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
             >
-              <Text style={styles.navLabel}>Notification capture</Text>
+              <Text style={styles.navLabel}>Notification inspector</Text>
               <PIcon
                 name="chevron"
                 size={16}

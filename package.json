@@ -1,7 +1,7 @@
 {
   "name": "nook",
   "main": "expo-router/entry",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -11,6 +11,7 @@
     "check": "tsc --noEmit && expo lint",
     "tunnel": "./scripts/dev-tunnel.sh",
     "build:dev:local": "GOOGLE_SERVICES_JSON=$PWD/google-services.json eas build --profile development --platform android --local",
+    "build:prod:local": "GOOGLE_SERVICES_JSON=$PWD/google-services.json eas build --profile production --platform android --local",
     "smoke:parser": "node --experimental-strip-types lib/notifications/__smoke__/parserSmoke.ts"
   },
   "dependencies": {

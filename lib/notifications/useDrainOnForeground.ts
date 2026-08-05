@@ -15,6 +15,12 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
+import {
+  isListenerConnected,
+  isPermissionGranted,
+  requestRebind,
+} from 'nook-notification-listener';
+
 import { useStore } from '@/lib/store';
 
 import { drainNotificationQueue } from './drain';
@@ -30,8 +36,24 @@ export function useDrainOnForeground() {
     if (Platform.OS !== 'android') return;
     if (!enabled) return;
 
+    // Repair a listener the system dropped while we were backgrounded. On OEM
+    // ROMs that kill background services the permission stays granted but the
+    // binding is gone, and nothing re-establishes it on its own — so capture
+    // stays silently dead until the user re-toggles Notification Access.
+    // Asking for a rebind is free when we're already connected.
+    const repairListener = () => {
+      try {
+        if (isPermissionGranted() && !isListenerConnected()) {
+          requestRebind();
+        }
+      } catch {
+        // Never let a diagnostic call break the drain path.
+      }
+    };
+
     const runDrain = () => {
       if (inFlight.current) return;
+      repairListener();
       // Sync the allowlist before draining so any newly-added bank packages
       // are honored by the native service on the very next notification.
       // syncAllowlist is idempotent — a no-op when the on-disk list already
