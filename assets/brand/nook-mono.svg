@@ -1,21 +1,9 @@
 <!--
-  Monochrome mark for Android themed ("monochrome") icons.
+  Monochrome mark: Android themed ("monochrome") icons and the status-bar icon.
 
-  The original export punched the coin out with a <mask>. ImageMagick's built-in
-  SVG renderer ignores masks and flattened this to a solid arch, losing the coin
-  entirely. Same geometry, expressed as one evenodd path so the coin subpath
-  cuts a real hole — which every rasteriser handles. The slot bar is drawn back
-  on top afterwards.
-
-  Android tints this whole shape a single colour, so it must be one flat fill
-  on transparency. Do not add colours here.
+  Variant "tinted" / "status bar" from direction 4e — the letterform alone, no
+  coin. Android keeps only the alpha channel and tints the whole shape one
+  colour, so the amber coin would flatten into the right stem and read as a
+  blob at 24dp. One flat fill on transparency; do not add colours here.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100">
-  <path
-    fill="#000000"
-    fill-rule="evenodd"
-    d="M30 78 L30 47 A20 20 0 0 1 70 47 L70 78 Z
-       M50 51 a12 12 0 1 1 0 24 a12 12 0 0 1 0-24 Z"
-  />
-  <rect x="44" y="61.5" width="12" height="3" rx="1.5" fill="#000000" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100"><g stroke="#000000" stroke-width="10.5" stroke-linecap="round" fill="none"><line x1="32.25" y1="32.25" x2="32.25" y2="67.75"/><line x1="67.75" y1="32.25" x2="67.75" y2="67.75"/><line x1="25.6" y1="34.83" x2="49.3" y2="65.17"/></g></svg>
